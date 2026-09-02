@@ -1760,6 +1760,23 @@ select:focus-visible {
     0 0 28px color-mix(in srgb, var(--belt) 72%, transparent);
 }
 
+.belt-rail.black-level {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 1px;
+}
+
+.black-level-stripe {
+  display: block;
+  width: 100%;
+  height: 3px;
+  border-radius: 1px;
+  background: #fff;
+  box-shadow: 0 0 5px rgba(255, 255, 255, 0.7);
+}
+
 .lock-card-topline,
 .lock-card-footer {
   display: flex;

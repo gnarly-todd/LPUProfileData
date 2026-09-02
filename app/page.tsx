@@ -1212,7 +1212,15 @@ export default function Home() {
                 key={`${lock.name}-${lock.version}-${index}`}
                 style={{ "--belt": beltColors[lock.belt] } as React.CSSProperties}
               >
-                <span className="belt-rail" />
+                <span
+                  className={`belt-rail ${lock.belt === "Black" ? "black-level" : ""}`}
+                  aria-hidden="true"
+                >
+                  {lock.belt === "Black" &&
+                    Array.from({ length: beltLevelScore(lock.beltLevel) }, (_, stripe) => (
+                      <i className="black-level-stripe" key={stripe} />
+                    ))}
+                </span>
                 <div className="lock-card-topline">
                   <span className="lock-index">{String(index + 1).padStart(3, "0")}</span>
                   <div className="lock-classification">
