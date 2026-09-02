@@ -551,6 +551,7 @@ select:focus-visible {
 
 .surprise-card {
   position: relative;
+  scroll-margin-top: 100px;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto auto;
   align-items: center;
@@ -1820,6 +1821,9 @@ footer > a {
   }
   .site-nav {
     height: 66px;
+  }
+  .surprise-card {
+    scroll-margin-top: 82px;
   }
   .brand small,
   .source-link {

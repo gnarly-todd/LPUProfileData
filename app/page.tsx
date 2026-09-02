@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Belt,
   beltColors,
@@ -569,7 +569,23 @@ export default function Home() {
   const [sort, setSort] = useState("belt-desc");
   const [visible, setVisible] = useState(24);
   const [surprise, setSurprise] = useState<(typeof locks)[number] | null>(null);
+  const [challengeRequest, setChallengeRequest] = useState(0);
   const [copied, setCopied] = useState(false);
+  const challengeRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (!surprise || challengeRequest === 0) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      challengeRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+      challengeRef.current?.focus({ preventScroll: true });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [challengeRequest, surprise]);
 
   const filteredLocks = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -618,6 +634,7 @@ export default function Home() {
       ["Purple", "Brown", "Red", "Black"].includes(lock.belt),
     );
     setSurprise(candidates[Math.floor(Math.random() * candidates.length)]);
+    setChallengeRequest((request) => request + 1);
   };
   const exportCsv = () => {
     const rows = [
@@ -694,7 +711,11 @@ export default function Home() {
             <button className="primary-button" onClick={jumpToExplorer}>
               Explore owned locks <Icon name="arrow" />
             </button>
-            <button className="secondary-button" onClick={chooseSurprise}>
+            <button
+              className="secondary-button"
+              onClick={chooseSurprise}
+              aria-controls="challenge-result"
+            >
               <Icon name="shuffle" /> Find a challenge
             </button>
           </div>
@@ -719,7 +740,13 @@ export default function Home() {
       </header>
 
       {surprise && (
-        <aside className="surprise-card" aria-live="polite">
+        <aside
+          className="surprise-card"
+          id="challenge-result"
+          ref={challengeRef}
+          tabIndex={-1}
+          aria-live="polite"
+        >
           <div className="surprise-icon">
             <Icon name="spark" />
           </div>
