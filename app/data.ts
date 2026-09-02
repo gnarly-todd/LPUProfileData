@@ -21,7 +21,7 @@ export type LockRecord = {
   picked: boolean;
 };
 
-export const profileSnapshotDate = "September 2, 2026 · 7:30 PM EDT";
+export const profileSnapshotDate = "September 2, 2026 · 7:34 PM EDT";
 
 export const beltOrder: Belt[] = [
   "White",
@@ -904,6 +904,14 @@ const lockCatalog: Omit<LockRecord, "status" | "picked">[] = [
     beltLevel: "Black 3",
   },
   {
+    id: "2db935ea",
+    name: 'Chubb "Definitive"',
+    version: "jewelry box (steel comb leaf spring, pin or pipe key)",
+    mechanisms: ["Lever"],
+    belt: "Black",
+    beltLevel: "Black 4",
+  },
+  {
     id: "3c73c705",
     name: "DOM ix Twinstar",
     mechanisms: ["Dimple"],
@@ -990,13 +998,6 @@ const lockCatalog: Omit<LockRecord, "status" | "picked">[] = [
   {
     id: "6c0ec943",
     name: "Opnus Memolis",
-    mechanisms: ["Lever/sidebar"],
-    belt: "Black",
-    beltLevel: "Black 4",
-  },
-  {
-    id: "e151c916",
-    name: "Opnus MMXII",
     mechanisms: ["Lever/sidebar"],
     belt: "Black",
     beltLevel: "Black 4",
