@@ -17,6 +17,8 @@ import {
 } from "./data";
 
 const SOURCE_URL = "https://lpubelts.com/#/profile/84dULJFIN4bHIC1LxCiuvBCSqT43?name=todd";
+const HOSTED_REFRESH_URL =
+  "https://todd-lock-analytics.nicelife70117.chatgpt.site/api/refresh-profile";
 const LPU_STATS_URL = "https://lpubelts.com/#/stats";
 const LPU_STATS_SNAPSHOT = "September 2, 2026";
 const rankedBelts = beltOrder.filter((belt) => belt !== "Unranked");
@@ -127,6 +129,12 @@ const iconPaths: Record<string, React.ReactNode> = {
     <>
       <rect x="8" y="8" width="12" height="12" rx="2" />
       <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
+    </>
+  ),
+  refresh: (
+    <>
+      <path d="M20 11a8 8 0 1 0-2.3 5.7" />
+      <path d="M20 4v7h-7" />
     </>
   ),
 };
@@ -711,6 +719,8 @@ export default function Home() {
   const [surprise, setSurprise] = useState<(typeof locks)[number] | null>(null);
   const [challengeRequest, setChallengeRequest] = useState(0);
   const [copied, setCopied] = useState(false);
+  const [refreshState, setRefreshState] = useState<"idle" | "loading" | "queued" | "error">("idle");
+  const [refreshMessage, setRefreshMessage] = useState("");
   const challengeRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -726,6 +736,17 @@ export default function Home() {
 
     return () => window.cancelAnimationFrame(frame);
   }, [challengeRequest, surprise]);
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("refresh") !== "queued") return;
+
+    setRefreshState("queued");
+    setRefreshMessage("Profile refresh queued in GitHub Actions.");
+    url.searchParams.delete("refresh");
+    window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+    window.setTimeout(() => setRefreshState("idle"), 6000);
+  }, []);
 
   const filteredLocks = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -813,6 +834,36 @@ export default function Home() {
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1800);
   };
+  const refreshProfile = async () => {
+    setRefreshState("loading");
+    setRefreshMessage("Requesting a fresh profile-data import…");
+
+    try {
+      if (window.location.hostname.endsWith("github.io")) {
+        window.location.assign(`${HOSTED_REFRESH_URL}?from=github-pages`);
+        return;
+      }
+
+      const response = await fetch("/api/refresh-profile", {
+        method: "POST",
+        headers: { Accept: "application/json" },
+      });
+      const result = (await response.json().catch(() => null)) as { message?: string } | null;
+
+      if (!response.ok) {
+        throw new Error(result?.message || "The refresh could not be started.");
+      }
+
+      setRefreshState("queued");
+      setRefreshMessage(result?.message || "Profile refresh queued in GitHub Actions.");
+      window.setTimeout(() => setRefreshState("idle"), 6000);
+    } catch (error) {
+      setRefreshState("error");
+      setRefreshMessage(
+        error instanceof Error ? error.message : "The refresh could not be started.",
+      );
+    }
+  };
 
   return (
     <main className={`site-shell theme-${theme}`}>
@@ -835,12 +886,34 @@ export default function Home() {
             Source <Icon name="external" size={15} />
           </a>
           <button
+            className={`refresh-button ${refreshState}`}
+            type="button"
+            onClick={refreshProfile}
+            disabled={refreshState === "loading" || refreshState === "queued"}
+            aria-label="Refresh LPU profile data"
+            title={refreshMessage || "Refresh LPU profile data now"}
+          >
+            <Icon name="refresh" size={15} />
+            <span>
+              {refreshState === "loading"
+                ? "Starting…"
+                : refreshState === "queued"
+                  ? "Refresh queued"
+                  : refreshState === "error"
+                    ? "Retry refresh"
+                    : "Refresh profile"}
+            </span>
+          </button>
+          <button
             className="icon-button"
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
             aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
           >
             <Icon name={theme === "dark" ? "sun" : "moon"} />
           </button>
+          <span className="sr-only" role="status" aria-live="polite">
+            {refreshMessage}
+          </span>
         </div>
       </nav>
 
