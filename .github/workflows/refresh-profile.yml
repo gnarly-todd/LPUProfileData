@@ -2,71 +2,103 @@ name: Refresh LPU profile data
 
 on:
   schedule:
-    # GitHub cron is UTC. Running at both offsets plus the Eastern-time guard
-    # keeps this at 8:00 AM through daylight-saving changes.
-    - cron: "0 12 * * *"
-    - cron: "0 13 * * *"
+    - cron: "0 8 * * *"
+      timezone: "America/New_York"
   workflow_dispatch:
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
 
 concurrency:
-  group: refresh-profile
+  group: refresh-lpu-profile
   cancel-in-progress: false
 
 jobs:
   refresh:
+    name: Refresh, validate, and package
     runs-on: ubuntu-latest
-    steps:
-      - name: Check Eastern time
-        id: time
-        shell: bash
-        run: |
-          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" || "$(TZ=America/New_York date +%H)" == "08" ]]; then
-            echo "run=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "run=false" >> "$GITHUB_OUTPUT"
-          fi
+    timeout-minutes: 20
+    outputs:
+      changed: ${{ steps.commit.outputs.changed }}
 
-      - name: Check out repository
-        if: steps.time.outputs.run == 'true'
+    steps:
+      - name: Check out the default branch
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.repository.default_branch }}
           fetch-depth: 0
 
-      - name: Set up Node
-        if: steps.time.outputs.run == 'true'
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
 
+      - name: Configure GitHub Pages
+        id: pages
+        uses: actions/configure-pages@v5
+
       - name: Install dependencies
-        if: steps.time.outputs.run == 'true'
         run: npm ci
 
-      - name: Refresh profile data
-        if: steps.time.outputs.run == 'true'
+      - name: Refresh Todd's LPU profile
         run: npm run refresh:data
 
-      - name: Format and validate
-        if: steps.time.outputs.run == 'true'
-        run: |
-          npm run format -- app/data.ts
-          npm run build:pages
-          npm run lint
+      - name: Format generated data
+        run: npm run format -- app/data.ts
 
-      - name: Commit changed data
-        if: steps.time.outputs.run == 'true'
+      - name: Validate source
+        run: npm run lint
+
+      - name: Build GitHub Pages site
+        run: npm run build:pages
+        env:
+          GITHUB_PAGES_BASE_PATH: ${{ steps.pages.outputs.base_path }}
+
+      - name: Verify Pages output
         shell: bash
         run: |
+          test -f dist-pages/index.html
+          cp dist-pages/index.html dist-pages/404.html
+          touch dist-pages/.nojekyll
+
+      - name: Commit refreshed data
+        id: commit
+        shell: bash
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
           if git diff --quiet -- app/data.ts; then
-            echo "Profile data is already current."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "LPU profile data is already current."
             exit 0
           fi
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add app/data.ts
           git commit -m "Refresh LPU profile data"
-          git push
+          git push origin "HEAD:${DEFAULT_BRANCH}"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Upload GitHub Pages artifact
+        if: steps.commit.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist-pages
+
+  deploy:
+    name: Deploy refreshed site
+    if: needs.refresh.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
+    needs: refresh
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
