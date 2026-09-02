@@ -25,6 +25,7 @@ const beltScore = Object.fromEntries(beltOrder.map((belt, index) => [belt, index
 const mechanisms = [...new Set(locks.flatMap((lock) => lock.mechanisms))].sort((a, b) =>
   a.localeCompare(b),
 );
+const MULTI_MECHANISM_FILTER = "Multi-mechanism";
 const bluePlusBelts = new Set<Belt>(["Blue", "Purple", "Brown", "Red", "Black"]);
 const redAndBlackBelts = new Set<Belt>(["Red", "Black"]);
 const ownedBluePlus = ownedLocks.filter((lock) => bluePlusBelts.has(lock.belt)).length;
@@ -607,7 +608,11 @@ export default function Home() {
           .toLowerCase()
           .includes(normalized);
       const matchesBelt = belt === "All" || lock.belt === belt;
-      const matchesMechanism = mechanism === "All" || lock.mechanisms.includes(mechanism);
+      const matchesMechanism =
+        mechanism === "All" ||
+        (mechanism === MULTI_MECHANISM_FILTER
+          ? lock.mechanisms.length > 1
+          : lock.mechanisms.includes(mechanism));
       const matchesStatus = status === "All" || lock.status === status;
       return matchesQuery && matchesBelt && matchesMechanism && matchesStatus;
     });
@@ -984,6 +989,7 @@ export default function Home() {
               }}
             >
               <option>All</option>
+              <option value={MULTI_MECHANISM_FILTER}>{MULTI_MECHANISM_FILTER}</option>
               {mechanisms.map((item) => (
                 <option key={item}>{item}</option>
               ))}
