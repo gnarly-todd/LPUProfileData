@@ -21,7 +21,7 @@ export type LockRecord = {
   picked: boolean;
 };
 
-export const profileSnapshotDate = "September 2, 2026 · 7:22 PM EDT";
+export const profileSnapshotDate = "September 2, 2026 · 7:23 PM EDT";
 
 export const beltOrder: Belt[] = [
   "White",
