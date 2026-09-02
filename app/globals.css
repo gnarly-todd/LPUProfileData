@@ -884,6 +884,10 @@ select:focus-visible {
 .belt-legend button:hover {
   background: var(--surface-soft);
 }
+
+.belt-legend .unranked-row {
+  grid-column: 1 / -1;
+}
 .belt-legend i {
   width: 7px;
   height: 7px;
@@ -1090,7 +1094,7 @@ select:focus-visible {
   display: grid;
   align-items: center;
   gap: 5px;
-  min-width: 720px;
+  min-width: 920px;
 }
 .heatmap > strong {
   color: var(--muted);
@@ -1384,10 +1388,29 @@ select:focus-visible {
   font-size: 10px;
 }
 
+.member-stack-shell {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.member-unranked {
+  display: grid;
+  height: 13px;
+  place-items: center;
+  border-radius: 4px;
+  color: var(--text);
+  background: #566171;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 800;
+}
+
 .member-stack {
   display: flex;
   height: 13px;
-  margin-top: 10px;
   overflow: hidden;
   border-radius: 999px;
   background: var(--surface-soft);

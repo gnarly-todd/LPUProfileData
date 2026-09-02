@@ -20,6 +20,7 @@ const SOURCE_URL = "https://lpubelts.com/#/profile/84dULJFIN4bHIC1LxCiuvBCSqT43?
 const LPU_STATS_URL = "https://lpubelts.com/#/stats";
 const LPU_STATS_SNAPSHOT = "September 2, 2026";
 const rankedBelts = beltOrder.filter((belt) => belt !== "Unranked");
+const displayBelts: Belt[] = ["Unranked", ...rankedBelts];
 const beltScore = Object.fromEntries(
   beltOrder.map((belt, index) => [belt, belt === "Unranked" ? -1 : index]),
 ) as Record<Belt, number>;
@@ -52,7 +53,7 @@ const lpuMemberBelts = [
     counts: [1315, 2343, 3222, 1222, 417, 177, 106, 74, 152],
   },
 ];
-const pickedByBelt = rankedBelts.map((belt) => ({
+const pickedByBelt = displayBelts.map((belt) => ({
   belt,
   owned: ownedLocks.filter((lock) => lock.belt === belt).length,
   picked: ownedLocks.filter((lock) => lock.belt === belt && lock.picked).length,
@@ -291,7 +292,7 @@ function CollectionSnapshot() {
 
 function BeltChart({ onSelect }: { onSelect: (belt: Belt) => void }) {
   let cursor = 0;
-  const gradient = beltOrder
+  const gradient = displayBelts
     .map((belt) => {
       const start = cursor;
       cursor += (beltCounts[belt] / ownedLocks.length) * 100;
@@ -321,8 +322,12 @@ function BeltChart({ onSelect }: { onSelect: (belt: Belt) => void }) {
           </div>
         </div>
         <div className="belt-legend">
-          {beltOrder.map((belt) => (
-            <button key={belt} onClick={() => onSelect(belt)}>
+          {displayBelts.map((belt) => (
+            <button
+              className={belt === "Unranked" ? "unranked-row" : undefined}
+              key={belt}
+              onClick={() => onSelect(belt)}
+            >
               <i style={{ background: beltColors[belt] }} />
               <span>{belt}</span>
               <strong>{beltCounts[belt]}</strong>
@@ -332,7 +337,7 @@ function BeltChart({ onSelect }: { onSelect: (belt: Belt) => void }) {
         </div>
       </div>
       <div className="stacked-belt" aria-hidden="true">
-        {beltOrder.map((belt) => (
+        {displayBelts.map((belt) => (
           <span
             key={belt}
             style={{
@@ -478,17 +483,26 @@ function MemberBeltContext() {
                 <strong>{group.platform}</strong>
                 <span>{total.toLocaleString()} belt records</span>
               </div>
-              <div className="member-stack" aria-label={`${group.platform} belt distribution`}>
-                {rankedBelts.map((belt, index) => (
-                  <i
-                    key={belt}
-                    style={{
-                      width: `${(group.counts[index] / total) * 100}%`,
-                      background: beltColors[belt],
-                    }}
-                    title={`${belt}: ${group.counts[index].toLocaleString()}`}
-                  />
-                ))}
+              <div className="member-stack-shell">
+                <i
+                  className="member-unranked"
+                  title="Unranked: not reported by LPU Stats"
+                  aria-label="Unranked: not reported by LPU Stats"
+                >
+                  Unranked
+                </i>
+                <div className="member-stack" aria-label={`${group.platform} belt distribution`}>
+                  {rankedBelts.map((belt, index) => (
+                    <i
+                      key={belt}
+                      style={{
+                        width: `${(group.counts[index] / total) * 100}%`,
+                        background: beltColors[belt],
+                      }}
+                      title={`${belt}: ${group.counts[index].toLocaleString()}`}
+                    />
+                  ))}
+                </div>
               </div>
               <p>
                 <strong>{((bluePlus / total) * 100).toFixed(1)}%</strong> are Blue Belt or above
@@ -498,8 +512,8 @@ function MemberBeltContext() {
         })}
       </div>
       <div className="member-belt-key">
-        {rankedBelts.map((belt) => (
-          <span key={belt}>
+        {displayBelts.map((belt) => (
+          <span key={belt} title={belt === "Unranked" ? "Not reported by LPU Stats" : undefined}>
             <i style={{ background: beltColors[belt] }} />
             {belt}
           </span>
@@ -557,7 +571,7 @@ function RankedBars({
 function Heatmap() {
   const rows = mechanismCounts.slice(0, 8).map((mechanism) => ({
     mechanism: mechanism.label,
-    values: rankedBelts.map(
+    values: displayBelts.map(
       (belt) =>
         ownedLocks.filter((lock) => lock.belt === belt && lock.mechanisms.includes(mechanism.label))
           .length,
@@ -577,12 +591,12 @@ function Heatmap() {
       <div className="heatmap-scroll">
         <div
           className="heatmap"
-          style={{ gridTemplateColumns: `145px repeat(${rankedBelts.length}, minmax(32px, 1fr))` }}
+          style={{ gridTemplateColumns: `145px repeat(${displayBelts.length}, minmax(64px, 1fr))` }}
         >
           <span />
-          {rankedBelts.map((belt) => (
+          {displayBelts.map((belt) => (
             <strong key={belt} style={{ color: beltColors[belt] }}>
-              {belt.slice(0, 2)}
+              {belt}
             </strong>
           ))}
           {rows.flatMap((row) => [
@@ -590,11 +604,11 @@ function Heatmap() {
             ...row.values.map((value, index) => (
               <span
                 className="heat-cell"
-                key={`${row.mechanism}-${rankedBelts[index]}`}
-                title={`${row.mechanism} · ${rankedBelts[index]}: ${value}`}
+                key={`${row.mechanism}-${displayBelts[index]}`}
+                title={`${row.mechanism} · ${displayBelts[index]}: ${value}`}
                 style={
                   {
-                    "--cell": beltColors[rankedBelts[index]],
+                    "--cell": beltColors[displayBelts[index]],
                     "--opacity": value === 0 ? 0.05 : 0.2 + (value / max) * 0.8,
                   } as React.CSSProperties
                 }
@@ -740,6 +754,7 @@ export default function Home() {
         return beltScore[b.belt] - beltScore[a.belt] || a.name.localeCompare(b.name);
       if (sort === "belt-asc")
         return beltScore[a.belt] - beltScore[b.belt] || a.name.localeCompare(b.name);
+      if (sort === "name-desc") return b.name.localeCompare(a.name);
       return a.name.localeCompare(b.name);
     });
   }, [query, status, belt, mechanism, sort]);
@@ -1099,7 +1114,7 @@ export default function Home() {
           >
             {status === "All" ? "All locks" : `All ${status.toLowerCase()}`}
           </button>
-          {beltOrder.map((item) => (
+          {displayBelts.map((item) => (
             <button
               key={item}
               className={`belt-filter-button ${belt === item ? "active" : ""}`}
@@ -1139,7 +1154,7 @@ export default function Home() {
               }}
             >
               <option>All</option>
-              {beltOrder.map((item) => (
+              {displayBelts.map((item) => (
                 <option key={item}>{item}</option>
               ))}
             </select>
@@ -1166,6 +1181,7 @@ export default function Home() {
               <option value="belt-desc">Belt: high to low</option>
               <option value="belt-asc">Belt: low to high</option>
               <option value="name">Name: A–Z</option>
+              <option value="name-desc">Name: Z–A</option>
             </select>
           </label>
         </div>
@@ -1178,8 +1194,8 @@ export default function Home() {
             </div>
             <p>
               Cards are ordered by{" "}
-              {sort === "name"
-                ? "name"
+              {sort === "name" || sort === "name-desc"
+                ? `name, ${sort === "name-desc" ? "Z–A" : "A–Z"}`
                 : `belt, ${sort === "belt-desc" ? "highest first" : "lowest first"}`}
               .
             </p>
