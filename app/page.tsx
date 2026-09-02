@@ -24,6 +24,10 @@ const displayBelts: Belt[] = ["Unranked", ...rankedBelts];
 const beltScore = Object.fromEntries(
   beltOrder.map((belt, index) => [belt, belt === "Unranked" ? -1 : index]),
 ) as Record<Belt, number>;
+const beltLevelScore = (beltLevel?: string) => {
+  const level = beltLevel?.match(/(\d+)$/)?.[1];
+  return level ? Number(level) : 0;
+};
 const mechanisms = [...new Set(locks.flatMap((lock) => lock.mechanisms))].sort((a, b) =>
   a.localeCompare(b),
 );
@@ -741,10 +745,20 @@ export default function Home() {
       return matchesQuery && matchesBelt && matchesMechanism && matchesStatus;
     });
     return [...filtered].sort((a, b) => {
-      if (sort === "belt-desc")
-        return beltScore[b.belt] - beltScore[a.belt] || a.name.localeCompare(b.name);
-      if (sort === "belt-asc")
-        return beltScore[a.belt] - beltScore[b.belt] || a.name.localeCompare(b.name);
+      if (sort === "belt-desc") {
+        return (
+          beltScore[b.belt] - beltScore[a.belt] ||
+          beltLevelScore(b.beltLevel) - beltLevelScore(a.beltLevel) ||
+          a.name.localeCompare(b.name)
+        );
+      }
+      if (sort === "belt-asc") {
+        return (
+          beltScore[a.belt] - beltScore[b.belt] ||
+          beltLevelScore(a.beltLevel) - beltLevelScore(b.beltLevel) ||
+          a.name.localeCompare(b.name)
+        );
+      }
       if (sort === "name-desc") return b.name.localeCompare(a.name);
       return a.name.localeCompare(b.name);
     });
