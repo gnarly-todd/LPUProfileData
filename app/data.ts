@@ -37,16 +37,16 @@ export const beltOrder: Belt[] = [
 ];
 
 export const beltColors: Record<Belt, string> = {
-  White: "#e7e9ee",
-  Yellow: "#e8d83e",
-  Orange: "#f38b42",
-  Green: "#3f9b61",
-  Blue: "#4987e8",
-  Purple: "#9a62e8",
-  Brown: "#a86f42",
-  Red: "#e24b58",
-  Black: "#15171c",
-  Unranked: "#77808f",
+  White: "#f4f6fa",
+  Yellow: "#f4db32",
+  Orange: "#ff8a34",
+  Green: "#34a853",
+  Blue: "#3b82f6",
+  Purple: "#a855f7",
+  Brown: "#a9693f",
+  Red: "#ef4444",
+  Black: "#1f222a",
+  Unranked: "#7c8798",
 };
 
 export const profileBeltCounts: Record<Belt, number> = {

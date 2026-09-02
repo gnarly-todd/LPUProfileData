@@ -387,17 +387,21 @@ select:focus-visible {
 }
 
 .belt-pill i {
-  width: 14px;
-  height: 5px;
+  width: 18px;
+  height: 6px;
   border-radius: 2px;
   background: var(--belt);
-  box-shadow: 0 0 12px color-mix(in srgb, var(--belt) 45%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--belt) 70%, white),
+    0 0 15px color-mix(in srgb, var(--belt) 62%, transparent);
 }
 
 .belt-pill.compact {
   justify-self: end;
-  min-width: 90px;
+  min-width: 112px;
   justify-content: center;
+  border-color: color-mix(in srgb, var(--belt) 66%, var(--line));
+  background: color-mix(in srgb, var(--belt) 18%, transparent);
 }
 
 .profile-snapshot {
@@ -1327,29 +1331,56 @@ select:focus-visible {
   box-shadow: 0 7px 22px rgba(0, 0, 0, 0.12);
 }
 
-.quick-views {
+.belt-filters {
   display: flex;
   flex-wrap: wrap;
   gap: 7px;
   margin-bottom: 12px;
 }
 
-.quick-views button {
-  min-height: 34px;
-  padding: 0 12px;
+.belt-filters button {
+  min-height: 38px;
+  padding: 0 13px;
   border: 1px solid var(--line);
   border-radius: 999px;
   color: var(--muted);
   background: var(--surface-soft);
-  font-size: 10px;
-  font-weight: 700;
+  font-size: 11px;
+  font-weight: 750;
   cursor: pointer;
 }
 
-.quick-views button.active {
+.belt-filters .all-belts.active {
   border-color: rgba(110, 231, 242, 0.42);
   color: var(--text);
   background: rgba(110, 231, 242, 0.09);
+}
+
+.belt-filter-button {
+  --belt: #3b82f6;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-color: color-mix(in srgb, var(--belt) 60%, var(--line)) !important;
+  color: var(--text) !important;
+  background: color-mix(in srgb, var(--belt) 12%, var(--surface-soft)) !important;
+}
+
+.belt-filter-button i {
+  width: 19px;
+  height: 8px;
+  border-radius: 3px;
+  background: var(--belt);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--belt) 68%, white),
+    0 0 14px color-mix(in srgb, var(--belt) 70%, transparent);
+}
+
+.belt-filter-button:hover,
+.belt-filter-button.active {
+  border-color: color-mix(in srgb, var(--belt) 88%, white) !important;
+  background: color-mix(in srgb, var(--belt) 23%, var(--surface-soft)) !important;
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--belt) 22%, transparent);
 }
 
 .filter-bar {
@@ -1484,11 +1515,13 @@ select:focus-visible {
   grid-template-rows: auto 1fr auto auto;
   gap: 16px;
   min-height: 245px;
-  padding: 18px 18px 16px 21px;
+  padding: 18px 18px 16px 28px;
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 16px;
-  background: linear-gradient(150deg, var(--surface-soft), transparent 62%);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--belt) 13%, transparent), transparent 34%),
+    linear-gradient(150deg, var(--surface-soft), transparent 62%);
   transition: 150ms ease;
 }
 
@@ -1502,9 +1535,11 @@ select:focus-visible {
   top: 0;
   bottom: 0;
   left: 0;
-  width: 5px;
+  width: 10px;
   background: var(--belt);
-  box-shadow: 0 0 18px color-mix(in srgb, var(--belt) 38%, transparent);
+  box-shadow:
+    2px 0 0 color-mix(in srgb, var(--belt) 68%, white),
+    0 0 28px color-mix(in srgb, var(--belt) 72%, transparent);
 }
 
 .lock-card-topline,
@@ -1718,7 +1753,7 @@ footer > a:hover {
 .timeline-summary span,
 .insight-card > span,
 .collection-tabs button,
-.quick-views button,
+.belt-filters button,
 .filter-bar label > span,
 .search-field > span,
 .collection-summary span,
@@ -1946,7 +1981,7 @@ footer > a {
     align-items: flex-end;
   }
   .belt-pill.compact {
-    min-width: 78px;
+    min-width: 104px;
   }
 }
 

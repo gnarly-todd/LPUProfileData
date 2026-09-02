@@ -26,10 +26,10 @@ const mechanisms = [...new Set(locks.flatMap((lock) => lock.mechanisms))].sort((
   a.localeCompare(b),
 );
 const bluePlusBelts = new Set<Belt>(["Blue", "Purple", "Brown", "Red", "Black"]);
-const eliteBelts = new Set<Belt>(["Red", "Black"]);
+const redAndBlackBelts = new Set<Belt>(["Red", "Black"]);
 const ownedBluePlus = ownedLocks.filter((lock) => bluePlusBelts.has(lock.belt)).length;
-const ownedElite = ownedLocks.filter((lock) => eliteBelts.has(lock.belt)).length;
-const ownedHybrid = ownedLocks.filter((lock) => lock.mechanisms.length > 1).length;
+const ownedRedAndBlack = ownedLocks.filter((lock) => redAndBlackBelts.has(lock.belt)).length;
+const ownedMultiMechanism = ownedLocks.filter((lock) => lock.mechanisms.length > 1).length;
 const ownedPicked = ownedLocks.filter((lock) => lock.picked).length;
 const wishlistBluePlus = wishlistLocks.filter((lock) => bluePlusBelts.has(lock.belt)).length;
 const ownedRankedScores = ownedLocks
@@ -37,8 +37,6 @@ const ownedRankedScores = ownedLocks
   .map((lock) => beltScore[lock.belt])
   .sort((a, b) => a - b);
 const ownedMedian = beltOrder[ownedRankedScores[Math.floor(ownedRankedScores.length / 2)]];
-const ownedAverage =
-  ownedRankedScores.reduce((total, score) => total + score, 0) / ownedRankedScores.length;
 const percentOfOwned = (value: number) => ((value / ownedLocks.length) * 100).toFixed(1);
 
 const iconPaths: Record<string, React.ReactNode> = {
@@ -136,13 +134,15 @@ function BeltPill({
   label?: string;
   compact?: boolean;
 }) {
+  const beltLabel = label ? `${label} Belt` : belt === "Unranked" ? "Unranked" : `${belt} Belt`;
+
   return (
     <span
       className={`belt-pill ${compact ? "compact" : ""}`}
       style={{ "--belt": beltColors[belt] } as React.CSSProperties}
     >
       <i />
-      {label ?? belt}
+      {beltLabel}
     </span>
   );
 }
@@ -192,14 +192,24 @@ function MetricCard({
 
 function CollectionSnapshot() {
   const rings = [
-    { label: "Blue+", value: Number(percentOfOwned(ownedBluePlus)), color: "#6ee7f2", radius: 92 },
     {
-      label: "Red / Black",
-      value: Number(percentOfOwned(ownedElite)),
+      label: "Blue Belt & above",
+      value: Number(percentOfOwned(ownedBluePlus)),
+      color: "#6ee7f2",
+      radius: 92,
+    },
+    {
+      label: "Red & Black Belts",
+      value: Number(percentOfOwned(ownedRedAndBlack)),
       color: "#e65d72",
       radius: 72,
     },
-    { label: "Hybrid", value: Number(percentOfOwned(ownedHybrid)), color: "#a875f2", radius: 52 },
+    {
+      label: "Multi-mechanism",
+      value: Number(percentOfOwned(ownedMultiMechanism)),
+      color: "#a875f2",
+      radius: 52,
+    },
     { label: "Picked", value: Number(percentOfOwned(ownedPicked)), color: "#66e6a2", radius: 32 },
   ];
 
@@ -216,7 +226,7 @@ function CollectionSnapshot() {
         <svg
           viewBox="0 0 240 240"
           role="img"
-          aria-label={`Owned collection: Blue or higher ${percentOfOwned(ownedBluePlus)} percent, Red or Black ${percentOfOwned(ownedElite)} percent, hybrid mechanisms ${percentOfOwned(ownedHybrid)} percent, and picked ${percentOfOwned(ownedPicked)} percent`}
+          aria-label={`Owned collection: Blue Belt or above ${percentOfOwned(ownedBluePlus)} percent, Red or Black Belt ${percentOfOwned(ownedRedAndBlack)} percent, multiple locking mechanisms ${percentOfOwned(ownedMultiMechanism)} percent, and picked ${percentOfOwned(ownedPicked)} percent`}
         >
           {rings.map((ring) => {
             const circumference = 2 * Math.PI * ring.radius;
@@ -273,7 +283,7 @@ function BeltChart({ onSelect }: { onSelect: (belt: Belt) => void }) {
     <article className="panel belt-panel">
       <div className="panel-title">
         <div>
-          <p className="eyebrow">Difficulty profile</p>
+          <p className="eyebrow">LPU belt rankings</p>
           <h3>Belt distribution</h3>
         </div>
         <span className="panel-badge">78 owned</span>
@@ -287,7 +297,7 @@ function BeltChart({ onSelect }: { onSelect: (belt: Belt) => void }) {
         >
           <div>
             <strong>{percentOfOwned(ownedBluePlus)}%</strong>
-            <span>Blue+</span>
+            <span>Blue & above</span>
           </div>
         </div>
         <div className="belt-legend">
@@ -313,7 +323,8 @@ function BeltChart({ onSelect }: { onSelect: (belt: Belt) => void }) {
         ))}
       </div>
       <p className="chart-note">
-        Blue leads the owned collection, followed by Green and Black; 62.8% is Blue or higher.
+        Blue Belt leads the owned collection, followed by Green and Black; 62.8% is ranked Blue Belt
+        or above.
       </p>
     </article>
   );
@@ -325,10 +336,10 @@ function BenchmarkChart() {
     <article className="panel benchmark-panel">
       <div className="panel-title">
         <div>
-          <p className="eyebrow">Collection behavior</p>
-          <h3>Status benchmarks</h3>
+          <p className="eyebrow">Profile comparison</p>
+          <h3>Collection status</h3>
         </div>
-        <span className="panel-badge">Source comparison</span>
+        <span className="panel-badge">LPU profile data</span>
       </div>
       <div className="chart-legend-inline">
         <span>
@@ -416,7 +427,8 @@ function RankedBars({
         ))}
       </div>
       <p className="chart-note">
-        Counts use owned entries only; hybrid locks can appear in more than one mechanism.
+        Counts use owned locks only. A lock with multiple mechanism labels can appear in more than
+        one row.
       </p>
     </article>
   );
@@ -437,8 +449,8 @@ function Heatmap() {
     <article className="panel heatmap-panel">
       <div className="panel-title">
         <div>
-          <p className="eyebrow">Portfolio depth</p>
-          <h3>Mechanism × belt matrix</h3>
+          <p className="eyebrow">Collection coverage</p>
+          <h3>Locking mechanism × belt rank</h3>
         </div>
         <span className="panel-badge">78 owned</span>
       </div>
@@ -476,8 +488,8 @@ function Heatmap() {
       <div className="heatmap-insight">
         <Icon name="spark" />
         <p>
-          <strong>Pin-tumbler is the collection's foundation.</strong> Disc detainers form the
-          strongest alternate mechanism, with sidepins concentrated in advanced tiers.
+          <strong>Pin-tumbler is the most common locking mechanism.</strong> Disc detainer is the
+          next most common, while Sidepins are concentrated in the higher belt ranks.
         </p>
       </div>
     </article>
@@ -565,7 +577,6 @@ export default function Home() {
   const [status, setStatus] = useState<"All" | "Owned" | "Wishlist">("Owned");
   const [belt, setBelt] = useState<"All" | Belt>("All");
   const [mechanism, setMechanism] = useState("All");
-  const [focus, setFocus] = useState<"all" | "stretch" | "elite" | "hybrid">("all");
   const [sort, setSort] = useState("belt-desc");
   const [visible, setVisible] = useState(24);
   const [surprise, setSurprise] = useState<(typeof locks)[number] | null>(null);
@@ -598,12 +609,7 @@ export default function Home() {
       const matchesBelt = belt === "All" || lock.belt === belt;
       const matchesMechanism = mechanism === "All" || lock.mechanisms.includes(mechanism);
       const matchesStatus = status === "All" || lock.status === status;
-      const matchesFocus =
-        focus === "all" ||
-        (focus === "stretch" && ["Purple", "Brown", "Red", "Black"].includes(lock.belt)) ||
-        (focus === "elite" && ["Red", "Black"].includes(lock.belt)) ||
-        (focus === "hybrid" && lock.mechanisms.length > 1);
-      return matchesQuery && matchesBelt && matchesMechanism && matchesStatus && matchesFocus;
+      return matchesQuery && matchesBelt && matchesMechanism && matchesStatus;
     });
     return [...filtered].sort((a, b) => {
       if (sort === "belt-desc")
@@ -612,14 +618,13 @@ export default function Home() {
         return beltScore[a.belt] - beltScore[b.belt] || a.name.localeCompare(b.name);
       return a.name.localeCompare(b.name);
     });
-  }, [query, status, belt, mechanism, focus, sort]);
+  }, [query, status, belt, mechanism, sort]);
 
   const jumpToExplorer = () =>
     document.getElementById("explorer")?.scrollIntoView({ behavior: "smooth" });
   const selectBelt = (selected: Belt) => {
     setStatus("Owned");
     setBelt(selected);
-    setFocus("all");
     setVisible(24);
     requestAnimationFrame(jumpToExplorer);
   };
@@ -659,7 +664,7 @@ export default function Home() {
     URL.revokeObjectURL(url);
   };
   const copySummary = async () => {
-    const summary = `Todd's LPU profile tracks ${locks.length} locks: ${ownedLocks.length} owned and ${wishlistLocks.length} wishlist. Owned collection: ${ownedBluePlus} Blue+ (${percentOfOwned(ownedBluePlus)}%), ${ownedElite} Red/Black, ${ownedHybrid} hybrid, median ${ownedMedian}; current belt Blue.`;
+    const summary = `Todd's LPU profile tracks ${locks.length} locks: ${ownedLocks.length} owned and ${wishlistLocks.length} wishlist. Of the owned locks, ${ownedBluePlus} are ranked Blue Belt or above (${percentOfOwned(ownedBluePlus)}%), ${ownedRedAndBlack} are ranked Red or Black Belt, and ${ownedMultiMechanism} have multiple locking-mechanism labels. The median owned rank and Todd's current belt are both Blue Belt.`;
     await navigator.clipboard.writeText(summary);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1800);
@@ -673,7 +678,7 @@ export default function Home() {
             <Icon name="lock" size={17} />
           </span>
           <strong>Todd / LPU</strong>
-          <small>Collection intelligence</small>
+          <small>Collection overview</small>
         </a>
         <div className="nav-links">
           <a href="#overview">Overview</a>
@@ -699,13 +704,13 @@ export default function Home() {
           <div className="status-chip">
             <i /> Daily profile refresh · {profileSnapshotDate}
           </div>
-          <p className="eyebrow">Lock Pickers United profile analysis</p>
+          <p className="eyebrow">Lock Pickers United collection profile</p>
           <h1>
             A collection built for <em>depth, range,</em> and the next challenge.
           </h1>
           <p className="hero-lede">
-            An owned-first visual read of Todd’s LPU profile: {ownedLocks.length} owned locks
-            analyzed, with {wishlistLocks.length} wishlist locks tracked separately.
+            A summary of Todd’s LPU profile: {ownedLocks.length} owned locks analyzed, with
+            {wishlistLocks.length} wishlist locks tracked separately.
           </p>
           <div className="hero-actions">
             <button className="primary-button" onClick={jumpToExplorer}>
@@ -773,7 +778,7 @@ export default function Home() {
         <SectionHeading
           eyebrow="At a glance"
           title="The owned collection, quantified"
-          copy={`Core difficulty and mechanism signals use the ${ownedLocks.length} locks Todd owns. Wishlist items remain visible as a separate planning set.`}
+          copy={`Core belt-rank and locking-mechanism counts use the ${ownedLocks.length} locks Todd owns. Wishlist locks remain visible as a separate planning list.`}
         />
         <div className="metric-grid">
           <MetricCard
@@ -791,16 +796,16 @@ export default function Home() {
             icon="chart"
           />
           <MetricCard
-            label="Red + Black"
-            value={String(ownedElite)}
-            detail={`${percentOfOwned(ownedElite)}% of owned locks`}
+            label="Red & Black Belts"
+            value={String(ownedRedAndBlack)}
+            detail={`${percentOfOwned(ownedRedAndBlack)}% of owned locks`}
             tone="#e65d72"
             icon="spark"
           />
           <MetricCard
-            label="Hybrid entries"
-            value={String(ownedHybrid)}
-            detail={`${percentOfOwned(ownedHybrid)}% multi-mechanism`}
+            label="Multi-mechanism locks"
+            value={String(ownedMultiMechanism)}
+            detail={`${percentOfOwned(ownedMultiMechanism)}% of owned locks`}
             tone="#a875f2"
             icon="shuffle"
           />
@@ -809,15 +814,15 @@ export default function Home() {
           <div>
             <span className="insight-number">01</span>
             <p>
-              <strong>Advanced center of gravity.</strong> The average owned tier is
-              {` ${ownedAverage.toFixed(2)}`}—between Blue and Purple—with a Blue median.
+              <strong>Blue Belt median.</strong> {ownedBluePlus} owned locks are ranked Blue Belt or
+              above, and the median owned rank is {ownedMedian} Belt.
             </p>
           </div>
           <div>
             <span className="insight-number">02</span>
             <p>
-              <strong>Broad technical range.</strong> {mechanismCounts.length} owned mechanism
-              labels span pin-tumblers, disc detainers, dimples, sliders, sidepins, and levers.
+              <strong>Broad range of locking mechanisms.</strong> {mechanismCounts.length} labels
+              cover Pin-tumbler, Disc detainer, Dimple, Slider, Sidepins, Lever, and more.
             </p>
           </div>
           <button onClick={copySummary}>
@@ -829,21 +834,21 @@ export default function Home() {
       <section className="section" id="analysis">
         <SectionHeading
           eyebrow="Owned-only analysis"
-          title="Where the owned collection is strongest"
-          copy="Difficulty, mechanism, brand, and matrix charts exclude the wishlist. The status benchmark remains a profile-level comparison."
+          title="Owned locks by belt rank and locking mechanism"
+          copy="Belt, locking-mechanism, manufacturer, and matrix charts exclude wishlist locks. The collection-status chart remains a profile-level comparison."
         />
         <div className="dashboard-grid">
           <BeltChart onSelect={selectBelt} />
           <BenchmarkChart />
           <RankedBars
-            eyebrow="Technical mix"
-            title="Mechanism coverage"
+            eyebrow="Lock designs"
+            title="Locking mechanisms"
             data={mechanismCounts.slice(0, 8)}
             onSelect={selectMechanism}
           />
           <RankedBars
-            eyebrow="Manufacturer presence"
-            title="Top brand families"
+            eyebrow="Manufacturers"
+            title="Most common manufacturers"
             data={brandCounts.slice(0, 8)}
           />
           <Heatmap />
@@ -855,26 +860,26 @@ export default function Home() {
         <SectionHeading
           eyebrow="Interpretation"
           title="What the owned data says"
-          copy="The owned collection has a strong advanced core, while the separate wishlist points to an even deeper future mix."
+          copy="The owned collection is concentrated at Blue Belt and above, while the separate wishlist includes even more higher-ranked locks."
         />
         <div className="findings-grid">
           <InsightCard
             index="01"
-            title="Advanced core"
-            copy="Nearly two-thirds of owned locks are Blue or higher, including 12 Black-belt entries."
-            stat="49 Blue+"
+            title="Higher-ranked owned locks"
+            copy="Nearly two-thirds of owned locks are ranked Blue Belt or above, including 12 Black Belt locks."
+            stat="49 locks"
           />
           <InsightCard
             index="02"
             title="Pin-tumbler foundation"
-            copy="Pin-tumbler remains the dominant owned mechanism, backed by meaningful disc-detainer, dimple, sidepin, and slider coverage."
-            stat="48 tags"
+            copy="Pin-tumbler is the most common locking-mechanism label, followed by Disc detainer, Dimple, Sidepins, and Slider."
+            stat="48 locks"
           />
           <InsightCard
             index="03"
-            title="Advanced wishlist"
-            copy={`${wishlistBluePlus} of ${wishlistLocks.length} wishlist locks are Blue or higher, so future additions are heavily weighted toward advanced tiers.`}
-            stat={`${wishlistBluePlus} Blue+`}
+            title="Higher-ranked wishlist locks"
+            copy={`${wishlistBluePlus} of ${wishlistLocks.length} wishlist locks are ranked Blue Belt or above.`}
+            stat={`${wishlistBluePlus} locks`}
           />
         </div>
       </section>
@@ -884,7 +889,7 @@ export default function Home() {
           <SectionHeading
             eyebrow="Interactive explorer"
             title="Browse owned and wishlist locks"
-            copy="Switch collection status first, then refine by belt, mechanism, keyword, or a ready-made challenge view."
+            copy="Choose owned, wishlist, or all locks, then filter by belt rank, locking mechanism, or keyword."
           />
           <button className="export-button" onClick={exportCsv}>
             <Icon name="download" /> Export filtered CSV
@@ -913,23 +918,30 @@ export default function Home() {
           ))}
         </div>
 
-        <div className="quick-views" aria-label="Quick difficulty views">
-          {[
-            ["all", status === "All" ? "All entries" : `All ${status.toLowerCase()}`],
-            ["stretch", "Purple+ stretch"],
-            ["elite", "Red / Black"],
-            ["hybrid", "Hybrid systems"],
-          ].map(([value, label]) => (
+        <div className="belt-filters" aria-label="Filter by LPU belt rank">
+          <button
+            className={belt === "All" ? "active all-belts" : "all-belts"}
+            aria-pressed={belt === "All"}
+            onClick={() => {
+              setBelt("All");
+              setVisible(24);
+            }}
+          >
+            {status === "All" ? "All locks" : `All ${status.toLowerCase()}`}
+          </button>
+          {beltOrder.map((item) => (
             <button
-              key={value}
-              className={focus === value ? "active" : ""}
+              key={item}
+              className={`belt-filter-button ${belt === item ? "active" : ""}`}
+              style={{ "--belt": beltColors[item] } as React.CSSProperties}
+              aria-pressed={belt === item}
               onClick={() => {
-                setFocus(value as typeof focus);
-                setBelt("All");
+                setBelt(item);
                 setVisible(24);
               }}
             >
-              {label}
+              <i />
+              {item === "Unranked" ? item : `${item} Belt`}
             </button>
           ))}
         </div>
@@ -1030,7 +1042,7 @@ export default function Home() {
                   ))}
                 </div>
                 <div className="lock-card-footer">
-                  <span>Difficulty</span>
+                  <span>Belt rank</span>
                   <BeltPill belt={lock.belt} label={lock.beltLevel} compact />
                 </div>
               </article>
@@ -1046,7 +1058,6 @@ export default function Home() {
                     setStatus("Owned");
                     setBelt("All");
                     setMechanism("All");
-                    setFocus("all");
                   }}
                 >
                   Reset filters
