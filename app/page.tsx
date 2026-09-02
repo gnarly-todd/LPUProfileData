@@ -127,14 +127,22 @@ function Icon({ name, size = 18 }: { name: string; size?: number }) {
   );
 }
 
-function BeltPill({ belt, compact = false }: { belt: Belt; compact?: boolean }) {
+function BeltPill({
+  belt,
+  label,
+  compact = false,
+}: {
+  belt: Belt;
+  label?: string;
+  compact?: boolean;
+}) {
   return (
     <span
       className={`belt-pill ${compact ? "compact" : ""}`}
       style={{ "--belt": beltColors[belt] } as React.CSSProperties}
     >
       <i />
-      {belt}
+      {label ?? belt}
     </span>
   );
 }
@@ -619,7 +627,7 @@ export default function Home() {
         lock.version ?? "",
         lock.status,
         lock.picked ? "Yes" : "No",
-        lock.belt,
+        lock.beltLevel ?? lock.belt,
         lock.mechanisms.join(" + "),
       ]),
     ];
@@ -720,7 +728,7 @@ export default function Home() {
             <h3>{surprise.name}</h3>
             <p>{surprise.version || surprise.mechanisms.join(" + ")}</p>
           </div>
-          <BeltPill belt={surprise.belt} />
+          <BeltPill belt={surprise.belt} label={surprise.beltLevel} />
           <button onClick={chooseSurprise}>
             <Icon name="shuffle" /> Draw again
           </button>
@@ -996,7 +1004,7 @@ export default function Home() {
                 </div>
                 <div className="lock-card-footer">
                   <span>Difficulty</span>
-                  <BeltPill belt={lock.belt} compact />
+                  <BeltPill belt={lock.belt} label={lock.beltLevel} compact />
                 </div>
               </article>
             ))}

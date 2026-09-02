@@ -29,6 +29,10 @@ function lockName(entry) {
     .join(" / ");
 }
 
+function normalizedBelt(belt) {
+  return /^Black [1-5]$/.test(belt) ? "Black" : belt;
+}
+
 const home = await getText(LPU_HOME);
 const assetPath = home.match(/assets\/index-[A-Za-z0-9_-]+\.js/)?.[0];
 if (!assetPath) throw new Error("Could not locate the current LPU application asset.");
@@ -60,13 +64,18 @@ if (pickedIds.some((id) => !ownedIds.includes(id))) {
   throw new Error("A picked lock is not marked owned; refusing to publish inconsistent data.");
 }
 
-const catalog = selectedEntries.map((entry) => ({
-  id: entry.id,
-  name: lockName(entry),
-  ...(entry.version ? { version: entry.version } : {}),
-  mechanisms: entry.lockingMechanisms ?? [],
-  belt: entry.belt,
-}));
+const catalog = selectedEntries.map((entry) => {
+  const belt = normalizedBelt(entry.belt);
+
+  return {
+    id: entry.id,
+    name: lockName(entry),
+    ...(entry.version ? { version: entry.version } : {}),
+    mechanisms: entry.lockingMechanisms ?? [],
+    belt,
+    ...(belt !== entry.belt ? { beltLevel: entry.belt } : {}),
+  };
+});
 
 let source = await readFile(DATA_FILE, "utf8");
 const start = source.indexOf("const lockCatalog:");

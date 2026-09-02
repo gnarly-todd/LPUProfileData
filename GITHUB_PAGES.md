@@ -34,7 +34,8 @@ GitHub may ask you to authenticate with GitHub CLI, a browser sign-in, or a pers
 2. Go to **Settings → Pages**.
 3. Under **Build and deployment**, set **Source** to **GitHub Actions**.
 4. Open the **Actions** tab and select **Deploy GitHub Pages**.
-5. Wait for both the `build` and `deploy` jobs to finish successfully.
+5. Open **Actions → Deploy GitHub Pages** and select **Run workflow**.
+6. Wait for both the `build` and `deploy` jobs to finish successfully.
 
 The published address will normally be:
 
@@ -42,7 +43,7 @@ The published address will normally be:
 https://YOUR-USERNAME.github.io/todd-lock-analytics/
 ```
 
-The workflow calculates the repository subpath automatically, so no source edits are needed when the repository name changes.
+The workflow asks GitHub Pages for the exact published base path before building. This supports normal project repositories, `YOUR-USERNAME.github.io` repositories, and custom domains without source edits.
 
 ## 4. Update the site
 
@@ -57,7 +58,7 @@ git commit -m "Update lock analytics"
 git push github main
 ```
 
-Every push to `main` starts `.github/workflows/pages.yml` and republishes the Pages site.
+Every push starts `.github/workflows/pages.yml` and republishes the Pages site. This avoids a missed deployment if the repository's default branch is named something other than `main`.
 
 ## 5. Daily lock-data refresh
 
@@ -93,7 +94,7 @@ The finished static files are written to `dist-pages/`. Do not commit that folde
 
 ## Troubleshooting
 
-- **404 after deployment:** Confirm **Settings → Pages → Source** is set to **GitHub Actions**, then rerun the workflow.
+- **404 after deployment:** Confirm **Settings → Pages → Source** is set to **GitHub Actions**. Open **Actions → Deploy GitHub Pages**, rerun the workflow, and use the exact URL shown by the completed `deploy` job. The workflow verifies that `index.html` is at the root of the uploaded Pages artifact.
 - **Blank page or missing styles:** Confirm the full repository was pushed, including `vite.github-pages.config.ts` and `github-pages/`.
 - **Workflow fails during install:** Use Node.js 22 locally and commit `package-lock.json`.
 - **Changes are not visible:** Check the latest workflow in the **Actions** tab and hard-refresh after it succeeds.
