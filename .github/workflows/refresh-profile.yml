@@ -1,0 +1,72 @@
+name: Refresh LPU profile data
+
+on:
+  schedule:
+    # GitHub cron is UTC. Running at both offsets plus the Eastern-time guard
+    # keeps this at 8:00 AM through daylight-saving changes.
+    - cron: "0 12 * * *"
+    - cron: "0 13 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-profile
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Eastern time
+        id: time
+        shell: bash
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" || "$(TZ=America/New_York date +%H)" == "08" ]]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check out repository
+        if: steps.time.outputs.run == 'true'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node
+        if: steps.time.outputs.run == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        if: steps.time.outputs.run == 'true'
+        run: npm ci
+
+      - name: Refresh profile data
+        if: steps.time.outputs.run == 'true'
+        run: npm run refresh:data
+
+      - name: Format and validate
+        if: steps.time.outputs.run == 'true'
+        run: |
+          npm run format -- app/data.ts
+          npm run build:pages
+          npm run lint
+
+      - name: Commit changed data
+        if: steps.time.outputs.run == 'true'
+        shell: bash
+        run: |
+          if git diff --quiet -- app/data.ts; then
+            echo "Profile data is already current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/data.ts
+          git commit -m "Refresh LPU profile data"
+          git push
