@@ -21,7 +21,7 @@ export type LockRecord = {
   picked: boolean;
 };
 
-export const profileSnapshotDate = "September 2, 2026 · 7:21 PM EDT";
+export const profileSnapshotDate = "September 2, 2026 · 7:22 PM EDT";
 
 export const beltOrder: Belt[] = [
   "White",
@@ -902,6 +902,14 @@ const lockCatalog: Omit<LockRecord, "status" | "picked">[] = [
     mechanisms: ["Wafer"],
     belt: "Black",
     beltLevel: "Black 3",
+  },
+  {
+    id: "2db935ea",
+    name: 'Chubb "Definitive"',
+    version: "jewelry box (steel comb leaf spring, pin or pipe key)",
+    mechanisms: ["Lever"],
+    belt: "Black",
+    beltLevel: "Black 4",
   },
   {
     id: "3c73c705",
