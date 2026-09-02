@@ -43,10 +43,10 @@ export const beltColors: Record<Belt, string> = {
   Green: "#34a853",
   Blue: "#3b82f6",
   Purple: "#a855f7",
-  Brown: "#a9693f",
+  Brown: "#7b4729",
   Red: "#ef4444",
-  Black: "#1f222a",
-  Unranked: "#7c8798",
+  Black: "#080a0f",
+  Unranked: "#566171",
 };
 
 export const profileBeltCounts: Record<Belt, number> = {
