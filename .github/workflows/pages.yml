@@ -2,7 +2,6 @@ name: Deploy GitHub Pages
 
 on:
   push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -25,10 +24,21 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - name: Configure GitHub Pages
+        id: pages
+        uses: actions/configure-pages@v5
       - name: Install dependencies
         run: npm ci
       - name: Build static site
         run: npm run build:pages
+        env:
+          GITHUB_PAGES_BASE_PATH: ${{ steps.pages.outputs.base_path }}
+      - name: Verify Pages entry point
+        shell: bash
+        run: |
+          test -f dist-pages/index.html
+          cp dist-pages/index.html dist-pages/404.html
+          touch dist-pages/.nojekyll
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
         with:
