@@ -483,26 +483,17 @@ function MemberBeltContext() {
                 <strong>{group.platform}</strong>
                 <span>{total.toLocaleString()} belt records</span>
               </div>
-              <div className="member-stack-shell">
-                <i
-                  className="member-unranked"
-                  title="Unranked: not reported by LPU Stats"
-                  aria-label="Unranked: not reported by LPU Stats"
-                >
-                  Unranked
-                </i>
-                <div className="member-stack" aria-label={`${group.platform} belt distribution`}>
-                  {rankedBelts.map((belt, index) => (
-                    <i
-                      key={belt}
-                      style={{
-                        width: `${(group.counts[index] / total) * 100}%`,
-                        background: beltColors[belt],
-                      }}
-                      title={`${belt}: ${group.counts[index].toLocaleString()}`}
-                    />
-                  ))}
-                </div>
+              <div className="member-stack" aria-label={`${group.platform} belt distribution`}>
+                {rankedBelts.map((belt, index) => (
+                  <i
+                    key={belt}
+                    style={{
+                      width: `${(group.counts[index] / total) * 100}%`,
+                      background: beltColors[belt],
+                    }}
+                    title={`${belt}: ${group.counts[index].toLocaleString()}`}
+                  />
+                ))}
               </div>
               <p>
                 <strong>{((bluePlus / total) * 100).toFixed(1)}%</strong> are Blue Belt or above
@@ -512,8 +503,8 @@ function MemberBeltContext() {
         })}
       </div>
       <div className="member-belt-key">
-        {displayBelts.map((belt) => (
-          <span key={belt} title={belt === "Unranked" ? "Not reported by LPU Stats" : undefined}>
+        {rankedBelts.map((belt) => (
+          <span key={belt}>
             <i style={{ background: beltColors[belt] }} />
             {belt}
           </span>
