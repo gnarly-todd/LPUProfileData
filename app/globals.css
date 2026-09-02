@@ -195,7 +195,8 @@ select:focus-visible {
   cursor: wait;
 }
 
-.refresh-button.loading svg {
+.refresh-button.loading svg,
+.refresh-button.queued svg {
   animation: refresh-spin 850ms linear infinite;
 }
 

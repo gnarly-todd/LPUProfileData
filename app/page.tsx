@@ -17,8 +17,8 @@ import {
 } from "./data";
 
 const SOURCE_URL = "https://lpubelts.com/#/profile/84dULJFIN4bHIC1LxCiuvBCSqT43?name=todd";
-const HOSTED_REFRESH_PAGE =
-  "https://todd-lock-analytics.nicelife70117.chatgpt.site/refresh-profile";
+const HOSTED_SITE_ORIGIN = "https://todd-lock-analytics.nicelife70117.chatgpt.site";
+const HOSTED_REFRESH_PAGE = `${HOSTED_SITE_ORIGIN}/refresh-profile`;
 const LPU_STATS_URL = "https://lpubelts.com/#/stats";
 const LPU_STATS_SNAPSHOT = "September 2, 2026";
 const rankedBelts = beltOrder.filter((belt) => belt !== "Unranked");
@@ -759,11 +759,43 @@ export default function Home() {
     const refreshResult = url.searchParams.get("refresh");
     if (!refreshResult) return;
 
-    if (refreshResult === "queued") {
+    const runId = url.searchParams.get("run_id");
+    let pollTimer: number | undefined;
+    let cancelled = false;
+
+    if (refreshResult === "queued" && runId && /^\d+$/.test(runId)) {
       setRefreshState("queued");
-      setRefreshMessage("Profile refresh queued in GitHub Actions.");
-      setDisplayedSnapshotDate(formatNewYorkSnapshot());
-      window.setTimeout(() => setRefreshState("idle"), 6000);
+      setRefreshMessage("Profile refresh is running. This page will reload when it finishes.");
+
+      const checkRefresh = async () => {
+        try {
+          const statusUrl = `${HOSTED_SITE_ORIGIN}/api/refresh-status?run_id=${runId}`;
+          const response = await fetch(statusUrl, { headers: { Accept: "application/json" } });
+          const result = (await response.json()) as {
+            status?: string;
+            conclusion?: string | null;
+          };
+
+          if (!response.ok) throw new Error("Unable to check refresh status.");
+          if (result.status === "completed") {
+            if (result.conclusion === "success") {
+              setRefreshMessage("Refresh complete. Reloading the updated collection…");
+              setDisplayedSnapshotDate(formatNewYorkSnapshot());
+              window.setTimeout(() => window.location.reload(), 1200);
+            } else {
+              setRefreshState("error");
+              setRefreshMessage("The profile refresh workflow did not complete successfully.");
+            }
+            return;
+          }
+
+          if (!cancelled) pollTimer = window.setTimeout(checkRefresh, 3000);
+        } catch {
+          if (!cancelled) pollTimer = window.setTimeout(checkRefresh, 5000);
+        }
+      };
+
+      void checkRefresh();
     } else {
       setRefreshState("error");
       setRefreshMessage(
@@ -773,7 +805,14 @@ export default function Home() {
       );
     }
     url.searchParams.delete("refresh");
+    url.searchParams.delete("run_id");
+    url.searchParams.delete("destination");
     window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+
+    return () => {
+      cancelled = true;
+      if (pollTimer) window.clearTimeout(pollTimer);
+    };
   }, []);
 
   const filteredLocks = useMemo(() => {

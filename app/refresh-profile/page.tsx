@@ -9,8 +9,10 @@ type RefreshDestination = "site" | "github-pages";
 type RefreshResult = "queued" | "error" | "forbidden";
 
 function resultUrl(destination: RefreshDestination, result: RefreshResult) {
-  const base = destination === "github-pages" ? GITHUB_PAGES_URL : "/";
-  return `${base}?refresh=${result}`;
+  const url = new URL(GITHUB_PAGES_URL);
+  url.searchParams.set("refresh", result);
+  url.searchParams.set("destination", destination);
+  return url.toString();
 }
 
 async function RefreshRunner({ destination }: { destination: RefreshDestination }) {
@@ -38,9 +40,9 @@ async function RefreshRunner({ destination }: { destination: RefreshDestination 
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
         "User-Agent": "todd-lock-analytics-refresh",
-        "X-GitHub-Api-Version": "2022-11-28",
+        "X-GitHub-Api-Version": "2026-03-10",
       },
-      body: JSON.stringify({ ref }),
+      body: JSON.stringify({ ref, return_run_details: true }),
     },
   );
 
@@ -49,7 +51,15 @@ async function RefreshRunner({ destination }: { destination: RefreshDestination 
     redirect(resultUrl(destination, "error"));
   }
 
-  redirect(resultUrl(destination, "queued"));
+  const dispatch = (await response.json()) as { workflow_run_id?: number };
+  if (!Number.isSafeInteger(dispatch.workflow_run_id)) {
+    console.error("GitHub workflow dispatch did not return a run ID");
+    redirect(resultUrl(destination, "error"));
+  }
+
+  const queuedUrl = new URL(resultUrl(destination, "queued"));
+  queuedUrl.searchParams.set("run_id", String(dispatch.workflow_run_id));
+  redirect(queuedUrl.toString());
 }
 
 export default async function RefreshProfilePage({
