@@ -2,10 +2,27 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/postcss";
 import { defineConfig } from "vite";
 
-const repositoryName = process.env.GITHUB_REPOSITORY?.split("/")[1];
+const [repositoryOwner, repositoryName] =
+  process.env.GITHUB_REPOSITORY?.split("/") ?? [];
+
+function githubPagesBase() {
+  const configuredBasePath = process.env.GITHUB_PAGES_BASE_PATH;
+
+  if (configuredBasePath !== undefined) {
+    return configuredBasePath ? `${configuredBasePath}/` : "/";
+  }
+
+  if (!repositoryName) return "/";
+
+  const isUserSite =
+    repositoryOwner &&
+    repositoryName.toLowerCase() === `${repositoryOwner}.github.io`.toLowerCase();
+
+  return isUserSite ? "/" : `/${repositoryName}/`;
+}
 
 export default defineConfig({
-  base: repositoryName ? `/${repositoryName}/` : "/",
+  base: githubPagesBase(),
   root: "github-pages",
   publicDir: "../public",
   css: { postcss: { plugins: [tailwindcss()] } },
