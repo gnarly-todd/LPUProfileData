@@ -17,11 +17,12 @@ import {
 } from "./data";
 
 const SOURCE_URL = "https://lpubelts.com/#/profile/84dULJFIN4bHIC1LxCiuvBCSqT43?name=todd";
+const LPU_STATS_URL = "https://lpubelts.com/#/stats";
+const LPU_STATS_SNAPSHOT = "September 2, 2026";
 const rankedBelts = beltOrder.filter((belt) => belt !== "Unranked");
-const beltScore = Object.fromEntries(beltOrder.map((belt, index) => [belt, index])) as Record<
-  Belt,
-  number
->;
+const beltScore = Object.fromEntries(
+  beltOrder.map((belt, index) => [belt, belt === "Unranked" ? -1 : index]),
+) as Record<Belt, number>;
 const mechanisms = [...new Set(locks.flatMap((lock) => lock.mechanisms))].sort((a, b) =>
   a.localeCompare(b),
 );
@@ -32,6 +33,7 @@ const ownedBluePlus = ownedLocks.filter((lock) => bluePlusBelts.has(lock.belt)).
 const ownedRedAndBlack = ownedLocks.filter((lock) => redAndBlackBelts.has(lock.belt)).length;
 const ownedMultiMechanism = ownedLocks.filter((lock) => lock.mechanisms.length > 1).length;
 const ownedPicked = ownedLocks.filter((lock) => lock.picked).length;
+const ownedRanked = ownedLocks.filter((lock) => lock.belt !== "Unranked").length;
 const wishlistBluePlus = wishlistLocks.filter((lock) => bluePlusBelts.has(lock.belt)).length;
 const ownedRankedScores = ownedLocks
   .filter((lock) => lock.belt !== "Unranked")
@@ -39,6 +41,22 @@ const ownedRankedScores = ownedLocks
   .sort((a, b) => a - b);
 const ownedMedian = beltOrder[ownedRankedScores[Math.floor(ownedRankedScores.length / 2)]];
 const percentOfOwned = (value: number) => ((value / ownedLocks.length) * 100).toFixed(1);
+const lpuCatalog = { ranked: 852, all: 964, unranked: 112 };
+const lpuMemberBelts = [
+  {
+    platform: "Discord",
+    counts: [411, 769, 1449, 721, 350, 164, 112, 77, 191],
+  },
+  {
+    platform: "Reddit",
+    counts: [1315, 2343, 3222, 1222, 417, 177, 106, 74, 152],
+  },
+];
+const pickedByBelt = rankedBelts.map((belt) => ({
+  belt,
+  owned: ownedLocks.filter((lock) => lock.belt === belt).length,
+  picked: ownedLocks.filter((lock) => lock.belt === belt && lock.picked).length,
+}));
 
 const iconPaths: Record<string, React.ReactNode> = {
   chart: (
@@ -211,7 +229,7 @@ function CollectionSnapshot() {
       color: "#a875f2",
       radius: 52,
     },
-    { label: "Picked", value: Number(percentOfOwned(ownedPicked)), color: "#66e6a2", radius: 32 },
+    { label: "Picked", value: Number(percentOfOwned(ownedPicked)), color: "#66e6a2", radius: 36 },
   ];
 
   return (
@@ -245,10 +263,11 @@ function CollectionSnapshot() {
               </g>
             );
           })}
-          <text x="120" y="114" textAnchor="middle" className="snapshot-total">
+          <circle cx="120" cy="120" r="26" className="snapshot-center" />
+          <text x="120" y="116" textAnchor="middle" className="snapshot-total">
             {ownedLocks.length}
           </text>
-          <text x="120" y="136" textAnchor="middle" className="snapshot-caption">
+          <text x="120" y="134" textAnchor="middle" className="snapshot-caption">
             LOCKS
           </text>
         </svg>
@@ -389,6 +408,106 @@ function BenchmarkChart() {
       <p className="chart-note">
         Owned and Wishlist are separate in this profile; Picked overlaps the Owned group. Benchmark
         values are read from the profile comparison.
+      </p>
+    </article>
+  );
+}
+
+function PickingProgressChart() {
+  const maxOwned = Math.max(...pickedByBelt.map((item) => item.owned));
+
+  return (
+    <article className="panel community-panel">
+      <div className="panel-title">
+        <div>
+          <p className="eyebrow">Owned versus picked</p>
+          <h3>Picking progress by lock rank</h3>
+        </div>
+        <span className="panel-badge">{ownedPicked} picked</span>
+      </div>
+      <div className="progress-legend" aria-hidden="true">
+        <span>
+          <i className="owned" />
+          Owned
+        </span>
+        <span>
+          <i className="picked" />
+          Picked
+        </span>
+      </div>
+      <div className="pick-progress-chart">
+        {pickedByBelt.map((item) => (
+          <div className="pick-progress-row" key={item.belt}>
+            <span style={{ color: beltColors[item.belt] }}>{item.belt}</span>
+            <div className="pick-progress-track">
+              <i className="owned" style={{ width: `${(item.owned / maxOwned) * 100}%` }} />
+              <i className="picked" style={{ width: `${(item.picked / maxOwned) * 100}%` }} />
+            </div>
+            <strong>
+              {item.picked}/{item.owned}
+            </strong>
+            <small>{item.owned ? Math.round((item.picked / item.owned) * 100) : 0}%</small>
+          </div>
+        ))}
+      </div>
+      <p className="chart-note">
+        Picked is a subset of owned. Todd has marked {ownedPicked} of {ownedLocks.length} owned
+        locks as picked ({percentOfOwned(ownedPicked)}%).
+      </p>
+    </article>
+  );
+}
+
+function MemberBeltContext() {
+  return (
+    <article className="panel community-panel">
+      <div className="panel-title">
+        <div>
+          <p className="eyebrow">Community belt records</p>
+          <h3>Where Blue Belt sits</h3>
+        </div>
+        <BeltPill belt="Blue" label="Todd: Blue" />
+      </div>
+      <div className="member-context-list">
+        {lpuMemberBelts.map((group) => {
+          const total = group.counts.reduce((sum, value) => sum + value, 0);
+          const bluePlus = group.counts.slice(4).reduce((sum, value) => sum + value, 0);
+          return (
+            <div className="member-context-row" key={group.platform}>
+              <div>
+                <strong>{group.platform}</strong>
+                <span>{total.toLocaleString()} belt records</span>
+              </div>
+              <div className="member-stack" aria-label={`${group.platform} belt distribution`}>
+                {rankedBelts.map((belt, index) => (
+                  <i
+                    key={belt}
+                    style={{
+                      width: `${(group.counts[index] / total) * 100}%`,
+                      background: beltColors[belt],
+                    }}
+                    title={`${belt}: ${group.counts[index].toLocaleString()}`}
+                  />
+                ))}
+              </div>
+              <p>
+                <strong>{((bluePlus / total) * 100).toFixed(1)}%</strong> are Blue Belt or above
+              </p>
+            </div>
+          );
+        })}
+      </div>
+      <div className="member-belt-key">
+        {rankedBelts.map((belt) => (
+          <span key={belt}>
+            <i style={{ background: beltColors[belt] }} />
+            {belt}
+          </span>
+        ))}
+      </div>
+      <p className="chart-note">
+        Member belt records describe people; collection ranks describe locks. This is community
+        context, not a direct measure of collection difficulty.
       </p>
     </article>
   );
@@ -688,6 +807,7 @@ export default function Home() {
         <div className="nav-links">
           <a href="#overview">Overview</a>
           <a href="#analysis">Analysis</a>
+          <a href="#community">Community</a>
           <a href="#explorer">Explorer</a>
         </div>
         <div className="nav-actions">
@@ -714,7 +834,7 @@ export default function Home() {
             A collection built for <em>depth, range,</em> and the next challenge.
           </h1>
           <p className="hero-lede">
-            A summary of Todd’s LPU profile: {ownedLocks.length} owned locks analyzed, with
+            A summary of Todd’s LPU profile: {ownedLocks.length} owned locks analyzed, with{" "}
             {wishlistLocks.length} wishlist locks tracked separately.
           </p>
           <div className="hero-actions">
@@ -858,6 +978,51 @@ export default function Home() {
           />
           <Heatmap />
           <Timeline />
+        </div>
+      </section>
+
+      <section className="section community-section" id="community">
+        <SectionHeading
+          eyebrow="LPU community context"
+          title="Collection depth and picking progress in context"
+          copy="Todd’s owned and picked counts are compared with the public LPU Stats dashboard. Member belt distributions are shown separately because a picker’s belt and a lock’s rank measure different things."
+        />
+        <div className="community-metrics">
+          <article className="community-metric">
+            <span>Ranked catalog coverage</span>
+            <strong>{((ownedRanked / lpuCatalog.ranked) * 100).toFixed(1)}%</strong>
+            <p>
+              {ownedRanked} owned ranked entries out of {lpuCatalog.ranked} ranked LPU locks
+            </p>
+          </article>
+          <article className="community-metric">
+            <span>Owned versus average</span>
+            <strong>{(ownedLocks.length / 14).toFixed(1)}×</strong>
+            <p>{ownedLocks.length} owned compared with the LPU collection average of 14</p>
+          </article>
+          <article className="community-metric">
+            <span>Picked versus average</span>
+            <strong>{(ownedPicked / 11).toFixed(1)}×</strong>
+            <p>{ownedPicked} picked, matching the LPU collection average of 11</p>
+          </article>
+          <article className="community-metric">
+            <span>Wishlist versus average</span>
+            <strong>{(wishlistLocks.length / 8).toFixed(1)}×</strong>
+            <p>{wishlistLocks.length} wishlist entries compared with the LPU average of 8</p>
+          </article>
+        </div>
+        <div className="community-grid">
+          <PickingProgressChart />
+          <MemberBeltContext />
+        </div>
+        <div className="community-source-note">
+          <p>
+            LPU catalog snapshot: {lpuCatalog.all} total locks, including {lpuCatalog.ranked} ranked
+            and {lpuCatalog.unranked} unranked. Community figures viewed {LPU_STATS_SNAPSHOT}.
+          </p>
+          <a href={LPU_STATS_URL} target="_blank" rel="noreferrer">
+            Open LPU Stats <Icon name="external" size={15} />
+          </a>
         </div>
       </section>
 
