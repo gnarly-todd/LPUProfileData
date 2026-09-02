@@ -904,14 +904,6 @@ const lockCatalog: Omit<LockRecord, "status" | "picked">[] = [
     beltLevel: "Black 3",
   },
   {
-    id: "2181e10d",
-    name: "Chatwood Invincible",
-    version: "Single Bitted",
-    mechanisms: ["Lever"],
-    belt: "Black",
-    beltLevel: "Black 5",
-  },
-  {
     id: "3c73c705",
     name: "DOM ix Twinstar",
     mechanisms: ["Dimple"],
@@ -1147,7 +1139,6 @@ const ownedLockIds = new Set([
   "ea1d1d8c",
   "da09d849",
   "e4bb0668",
-  "2181e10d",
 ]);
 const pickedLockIds = new Set([
   "07034c0f",
