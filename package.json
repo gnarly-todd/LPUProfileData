@@ -9,7 +9,7 @@
     "build:pages": "vite build --config vite.github-pages.config.ts",
     "refresh:data": "node scripts/refresh-profile.mjs",
     "start": "wrangler dev --config dist/server/wrangler.json",
-    "lint": "oxlint",
+    "lint": "oxlint app github-pages scripts next.config.ts vite.config.ts vite.github-pages.config.ts --format=github",
     "format": "oxfmt"
   },
   "dependencies": {
@@ -30,7 +30,6 @@
     "@vitejs/plugin-rsc": "0.5.26",
     "oxfmt": "0.61.0",
     "oxlint": "1.76.0",
-    "oxlint-tsgolint": "7.0.2001",
     "tailwindcss": "4.2.1",
     "typescript": "5.9.3",
     "vite": "8.0.13",
