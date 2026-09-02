@@ -17,8 +17,8 @@ import {
 } from "./data";
 
 const SOURCE_URL = "https://lpubelts.com/#/profile/84dULJFIN4bHIC1LxCiuvBCSqT43?name=todd";
-const HOSTED_REFRESH_URL =
-  "https://todd-lock-analytics.nicelife70117.chatgpt.site/api/refresh-profile";
+const HOSTED_REFRESH_PAGE =
+  "https://todd-lock-analytics.nicelife70117.chatgpt.site/refresh-profile";
 const LPU_STATS_URL = "https://lpubelts.com/#/stats";
 const LPU_STATS_SNAPSHOT = "September 2, 2026";
 const rankedBelts = beltOrder.filter((belt) => belt !== "Unranked");
@@ -34,6 +34,22 @@ const mechanisms = [...new Set(locks.flatMap((lock) => lock.mechanisms))].sort((
   a.localeCompare(b),
 );
 const MULTI_MECHANISM_FILTER = "Multi-mechanism";
+const formatNewYorkSnapshot = (date = new Date()) => {
+  const snapshotDate = new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "America/New_York",
+  }).format(date);
+  const snapshotTime = new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZoneName: "short",
+    timeZone: "America/New_York",
+  }).format(date);
+
+  return `${snapshotDate} · ${snapshotTime}`;
+};
 const bluePlusBelts = new Set<Belt>(["Blue", "Purple", "Brown", "Red", "Black"]);
 const redAndBlackBelts = new Set<Belt>(["Red", "Black"]);
 const ownedBluePlus = ownedLocks.filter((lock) => bluePlusBelts.has(lock.belt)).length;
@@ -721,6 +737,7 @@ export default function Home() {
   const [copied, setCopied] = useState(false);
   const [refreshState, setRefreshState] = useState<"idle" | "loading" | "queued" | "error">("idle");
   const [refreshMessage, setRefreshMessage] = useState("");
+  const [displayedSnapshotDate, setDisplayedSnapshotDate] = useState(profileSnapshotDate);
   const challengeRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -739,13 +756,24 @@ export default function Home() {
 
   useEffect(() => {
     const url = new URL(window.location.href);
-    if (url.searchParams.get("refresh") !== "queued") return;
+    const refreshResult = url.searchParams.get("refresh");
+    if (!refreshResult) return;
 
-    setRefreshState("queued");
-    setRefreshMessage("Profile refresh queued in GitHub Actions.");
+    if (refreshResult === "queued") {
+      setRefreshState("queued");
+      setRefreshMessage("Profile refresh queued in GitHub Actions.");
+      setDisplayedSnapshotDate(formatNewYorkSnapshot());
+      window.setTimeout(() => setRefreshState("idle"), 6000);
+    } else {
+      setRefreshState("error");
+      setRefreshMessage(
+        refreshResult === "forbidden"
+          ? "This refresh control is limited to the site owner."
+          : "GitHub could not queue the refresh workflow. Try again shortly.",
+      );
+    }
     url.searchParams.delete("refresh");
     window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
-    window.setTimeout(() => setRefreshState("idle"), 6000);
   }, []);
 
   const filteredLocks = useMemo(() => {
@@ -834,35 +862,14 @@ export default function Home() {
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1800);
   };
-  const refreshProfile = async () => {
+  const refreshProfile = () => {
     setRefreshState("loading");
-    setRefreshMessage("Requesting a fresh profile-data import…");
+    setRefreshMessage("Opening the secure profile refresh…");
+    const onGitHubPages = window.location.hostname.endsWith("github.io");
+    const destination = onGitHubPages ? "github-pages" : "site";
+    const refreshPage = onGitHubPages ? HOSTED_REFRESH_PAGE : "/refresh-profile";
 
-    try {
-      if (window.location.hostname.endsWith("github.io")) {
-        window.location.assign(`${HOSTED_REFRESH_URL}?from=github-pages`);
-        return;
-      }
-
-      const response = await fetch("/api/refresh-profile", {
-        method: "POST",
-        headers: { Accept: "application/json" },
-      });
-      const result = (await response.json().catch(() => null)) as { message?: string } | null;
-
-      if (!response.ok) {
-        throw new Error(result?.message || "The refresh could not be started.");
-      }
-
-      setRefreshState("queued");
-      setRefreshMessage(result?.message || "Profile refresh queued in GitHub Actions.");
-      window.setTimeout(() => setRefreshState("idle"), 6000);
-    } catch (error) {
-      setRefreshState("error");
-      setRefreshMessage(
-        error instanceof Error ? error.message : "The refresh could not be started.",
-      );
-    }
+    window.location.assign(`${refreshPage}?destination=${destination}`);
   };
 
   return (
@@ -920,7 +927,7 @@ export default function Home() {
       <header className="hero" id="top">
         <div className="hero-copy">
           <div className="status-chip">
-            <i /> Daily profile refresh · {profileSnapshotDate}
+            <i /> Daily profile refresh · {displayedSnapshotDate}
           </div>
           <p className="eyebrow">Lock Pickers United collection profile</p>
           <h1>
@@ -1357,7 +1364,7 @@ export default function Home() {
           </div>
         </div>
         <p>
-          Data reflects the public LPU profile snapshot refreshed {profileSnapshotDate}. Analysis
+          Data reflects the public LPU profile snapshot refreshed {displayedSnapshotDate}. Analysis
           uses owned locks unless labeled otherwise; wishlist entries remain separate in the
           explorer.
         </p>

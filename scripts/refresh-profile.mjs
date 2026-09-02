@@ -97,12 +97,19 @@ export const locks: LockRecord[] = lockCatalog.map((lock) => ({
 
 `;
 
-const refreshedOn = new Intl.DateTimeFormat("en-US", {
+const refreshedDate = new Intl.DateTimeFormat("en-US", {
   month: "long",
   day: "numeric",
   year: "numeric",
   timeZone: "America/New_York",
 }).format(new Date());
+const refreshedTime = new Intl.DateTimeFormat("en-US", {
+  hour: "numeric",
+  minute: "2-digit",
+  timeZoneName: "short",
+  timeZone: "America/New_York",
+}).format(new Date());
+const refreshedOn = `${refreshedDate} · ${refreshedTime}`;
 
 source = source.slice(0, start) + generated + source.slice(end);
 source = source.replace(
