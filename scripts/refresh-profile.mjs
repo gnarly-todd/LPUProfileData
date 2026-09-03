@@ -40,6 +40,32 @@ function normalizedBelt(belt) {
   return /^Black [1-5]$/.test(belt) ? "Black" : belt;
 }
 
+function trustedMediaUrl(entry, domain) {
+  return (entry.media ?? [])
+    .map((item) => item.fullUrl)
+    .find((value) => {
+      try {
+        const url = new URL(value);
+        return (
+          url.protocol === "https:" &&
+          (url.hostname === domain || url.hostname.endsWith(`.${domain}`))
+        );
+      } catch {
+        return false;
+      }
+    });
+}
+
+function resourceLinks(entry) {
+  const lockWiki = trustedMediaUrl(entry, "lockwiki.com");
+  const cataLocks = trustedMediaUrl(entry, "catalocks.eu");
+  return {
+    lpu: `https://lpubelts.com/locks/${entry.id}.html`,
+    ...(lockWiki ? { lockWiki } : {}),
+    ...(cataLocks ? { cataLocks } : {}),
+  };
+}
+
 const home = await getText(LPU_HOME);
 const assetPath = home.match(/assets\/index-[A-Za-z0-9_-]+\.js/)?.[0];
 if (!assetPath) throw new Error("Could not locate the current LPU application asset.");
@@ -81,6 +107,7 @@ const catalog = selectedEntries.map((entry) => {
     mechanisms: entry.lockingMechanisms ?? [],
     belt,
     ...(belt !== entry.belt ? { beltLevel: entry.belt } : {}),
+    resourceLinks: resourceLinks(entry),
   };
 });
 

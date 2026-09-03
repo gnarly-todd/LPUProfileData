@@ -250,12 +250,6 @@ async function loadSavedProfile(saved: SavedProfile) {
   return loaded;
 }
 
-const lpuLockUrl = (lock: LockRecord) => `https://lpubelts.com/locks/${lock.id}.html`;
-const lockWikiUrl = (lock: LockRecord) =>
-  `https://www.lockwiki.com/index.php?title=Special%3ASearch&profile=default&fulltext=1&search=${encodeURIComponent(lock.name)}`;
-const cataLocksUrl = (lock: LockRecord) =>
-  `https://www.catalocks.eu/search/?type=${encodeURIComponent(lock.name)}`;
-
 const iconPaths: Record<string, React.ReactNode> = {
   chart: (
     <>
@@ -2417,17 +2411,30 @@ export default function Home() {
                       </button>
                     ))}
                   </div>
-                  <div className="lock-resource-links" aria-label={`References for ${lock.name}`}>
-                    <a href={lpuLockUrl(lock)} target="_blank" rel="noreferrer">
-                      LPU Belts <Icon name="external" size={12} />
-                    </a>
-                    <a href={lockWikiUrl(lock)} target="_blank" rel="noreferrer">
-                      LockWiki <Icon name="external" size={12} />
-                    </a>
-                    <a href={cataLocksUrl(lock)} target="_blank" rel="noreferrer">
-                      CataLocks <Icon name="external" size={12} />
-                    </a>
-                  </div>
+                  {Object.entries({
+                    "LPU Belts":
+                      lock.resourceLinks?.lpu || `https://lpubelts.com/locks/${lock.id}.html`,
+                    LockWiki: lock.resourceLinks?.lockWiki,
+                    CataLocks: lock.resourceLinks?.cataLocks,
+                  }).some(([, url]) => Boolean(url)) && (
+                    <div
+                      className="lock-resource-links"
+                      aria-label={`Verified references for ${lock.name}`}
+                    >
+                      {Object.entries({
+                        "LPU Belts":
+                          lock.resourceLinks?.lpu || `https://lpubelts.com/locks/${lock.id}.html`,
+                        LockWiki: lock.resourceLinks?.lockWiki,
+                        CataLocks: lock.resourceLinks?.cataLocks,
+                      }).map(([label, url]) =>
+                        url ? (
+                          <a key={label} href={url} target="_blank" rel="noreferrer">
+                            {label} <Icon name="external" size={12} />
+                          </a>
+                        ) : null,
+                      )}
+                    </div>
+                  )}
                   <div className="lock-card-footer">
                     <span>Belt rank</span>
                     <BeltPill belt={lock.belt} label={lock.beltLevel} compact />

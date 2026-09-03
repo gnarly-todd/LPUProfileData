@@ -24,6 +24,7 @@ type LpuEntry = {
   version?: string;
   lockingMechanisms?: string[];
   makeModels: { make?: string; model?: string }[];
+  media?: { fullUrl?: string }[];
 };
 
 type FirestoreField = {
@@ -94,6 +95,33 @@ function normalizeBelt(sourceBelt: string): { belt: Belt; beltLevel?: LockRecord
     return { belt: "Black", beltLevel: sourceBelt as LockRecord["beltLevel"] };
   }
   return { belt: BELTS.has(sourceBelt as Belt) ? (sourceBelt as Belt) : "Unranked" };
+}
+
+function trustedMediaUrl(entry: LpuEntry, domain: string) {
+  return entry.media
+    ?.map((item) => item.fullUrl)
+    .find((value): value is string => {
+      if (!value) return false;
+      try {
+        const url = new URL(value);
+        return (
+          url.protocol === "https:" &&
+          (url.hostname === domain || url.hostname.endsWith(`.${domain}`))
+        );
+      } catch {
+        return false;
+      }
+    });
+}
+
+function resourceLinks(entry: LpuEntry): LockRecord["resourceLinks"] {
+  const lockWiki = trustedMediaUrl(entry, "lockwiki.com");
+  const cataLocks = trustedMediaUrl(entry, "catalocks.eu");
+  return {
+    lpu: `https://lpubelts.com/locks/${entry.id}.html`,
+    ...(lockWiki ? { lockWiki } : {}),
+    ...(cataLocks ? { cataLocks } : {}),
+  };
 }
 
 function parseProfileUrl(value: string) {
@@ -202,6 +230,7 @@ export async function GET(request: Request) {
         ...normalized,
         status: ownedSet.has(entry.id) ? "Owned" : "Wishlist",
         picked: pickedIds.has(entry.id),
+        resourceLinks: resourceLinks(entry),
       };
     });
     const anonymous = profile.fields?.privacyAnonymous?.booleanValue === true;
