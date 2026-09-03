@@ -2411,30 +2411,18 @@ export default function Home() {
                       </button>
                     ))}
                   </div>
-                  {Object.entries({
-                    "LPU Belts":
-                      lock.resourceLinks?.lpu || `https://lpubelts.com/locks/${lock.id}.html`,
-                    LockWiki: lock.resourceLinks?.lockWiki,
-                    CataLocks: lock.resourceLinks?.cataLocks,
-                  }).some(([, url]) => Boolean(url)) && (
-                    <div
-                      className="lock-resource-links"
-                      aria-label={`Verified references for ${lock.name}`}
+                  <div
+                    className="lock-resource-links"
+                    aria-label={`LPU reference for ${lock.name}`}
+                  >
+                    <a
+                      href={lock.resourceLinks?.lpu || `https://lpubelts.com/locks/${lock.id}.html`}
+                      target="_blank"
+                      rel="noreferrer"
                     >
-                      {Object.entries({
-                        "LPU Belts":
-                          lock.resourceLinks?.lpu || `https://lpubelts.com/locks/${lock.id}.html`,
-                        LockWiki: lock.resourceLinks?.lockWiki,
-                        CataLocks: lock.resourceLinks?.cataLocks,
-                      }).map(([label, url]) =>
-                        url ? (
-                          <a key={label} href={url} target="_blank" rel="noreferrer">
-                            {label} <Icon name="external" size={12} />
-                          </a>
-                        ) : null,
-                      )}
-                    </div>
-                  )}
+                      LPU Belts <Icon name="external" size={12} />
+                    </a>
+                  </div>
                   <div className="lock-card-footer">
                     <span>Belt rank</span>
                     <BeltPill belt={lock.belt} label={lock.beltLevel} compact />

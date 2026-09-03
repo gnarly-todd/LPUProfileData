@@ -21,12 +21,10 @@ export type LockRecord = {
   picked: boolean;
   resourceLinks?: {
     lpu?: string;
-    lockWiki?: string;
-    cataLocks?: string;
   };
 };
 
-export const profileSnapshotDate = "September 3, 2026 · 10:04 AM EDT";
+export const profileSnapshotDate = "September 3, 2026 · 10:30 AM EDT";
 
 export const beltOrder: Belt[] = [
   "White",
@@ -107,7 +105,6 @@ const lockCatalog: Omit<LockRecord, "status" | "picked">[] = [
     belt: "White",
     resourceLinks: {
       lpu: "https://lpubelts.com/locks/562e964e.html",
-      lockWiki: "https://www.lockwiki.com/index.php/File:Master_Lock_3_-_FXE47401.jpg",
     },
   },
   {
@@ -165,7 +162,6 @@ const lockCatalog: Omit<LockRecord, "status" | "picked">[] = [
     belt: "Orange",
     resourceLinks: {
       lpu: "https://lpubelts.com/locks/632f4069.html",
-      lockWiki: "https://www.lockwiki.com/index.php/File:Abus_model_55_with_keys.jpg",
     },
   },
   {
@@ -193,7 +189,6 @@ const lockCatalog: Omit<LockRecord, "status" | "picked">[] = [
     belt: "Orange",
     resourceLinks: {
       lpu: "https://lpubelts.com/locks/efc01233.html",
-      lockWiki: "https://www.lockwiki.com/index.php/File:Master_Lock_150_-_FXE47400.jpg",
     },
   },
   {
@@ -277,8 +272,6 @@ const lockCatalog: Omit<LockRecord, "status" | "picked">[] = [
     belt: "Green",
     resourceLinks: {
       lpu: "https://lpubelts.com/locks/2ae1e0b8.html",
-      lockWiki:
-        "https://www.lockwiki.com/index.php/File:American_lock_padlocks_1105_1205_1305_upright.jpg",
     },
   },
   {
@@ -336,7 +329,6 @@ const lockCatalog: Omit<LockRecord, "status" | "picked">[] = [
     belt: "Green",
     resourceLinks: {
       lpu: "https://lpubelts.com/locks/cd0c2ff9.html",
-      cataLocks: "https://www.catalocks.eu/photos/177/1.jpg",
     },
   },
   {
@@ -355,8 +347,6 @@ const lockCatalog: Omit<LockRecord, "status" | "picked">[] = [
     belt: "Green",
     resourceLinks: {
       lpu: "https://lpubelts.com/locks/c942490e.html",
-      lockWiki:
-        "https://www.lockwiki.com/index.php/File:Master_Lock_410_LOTO,_orange_-_FXE47410.jpg",
     },
   },
   {
@@ -433,7 +423,6 @@ const lockCatalog: Omit<LockRecord, "status" | "picked">[] = [
     belt: "Blue",
     resourceLinks: {
       lpu: "https://lpubelts.com/locks/d9e3829f.html",
-      cataLocks: "https://www.catalocks.eu/photos/71/1.jpg",
     },
   },
   {
@@ -454,7 +443,6 @@ const lockCatalog: Omit<LockRecord, "status" | "picked">[] = [
     belt: "Blue",
     resourceLinks: {
       lpu: "https://lpubelts.com/locks/d08aa492.html",
-      lockWiki: "https://www.lockwiki.com/index.php/File:Assa_700_cylinders_front_and_back.jpeg",
     },
   },
   {
@@ -465,7 +453,6 @@ const lockCatalog: Omit<LockRecord, "status" | "picked">[] = [
     belt: "Blue",
     resourceLinks: {
       lpu: "https://lpubelts.com/locks/f1e92541.html",
-      lockWiki: "https://www.lockwiki.com/index.php/File:Assa_700_cylinders_front_and_back.jpeg",
     },
   },
   {
@@ -521,7 +508,6 @@ const lockCatalog: Omit<LockRecord, "status" | "picked">[] = [
     belt: "Blue",
     resourceLinks: {
       lpu: "https://lpubelts.com/locks/aee424c0.html",
-      lockWiki: "https://www.lockwiki.com/index.php/File:FAB4xxxx_least.png",
     },
   },
   {
@@ -552,7 +538,6 @@ const lockCatalog: Omit<LockRecord, "status" | "picked">[] = [
     belt: "Blue",
     resourceLinks: {
       lpu: "https://lpubelts.com/locks/959a6b9d.html",
-      lockWiki: "https://www.lockwiki.com/index.php/File:Goal_S_Face.jpeg",
     },
   },
   {
@@ -601,7 +586,6 @@ const lockCatalog: Omit<LockRecord, "status" | "picked">[] = [
     belt: "Blue",
     resourceLinks: {
       lpu: "https://lpubelts.com/locks/331c9d36.html",
-      lockWiki: "https://www.lockwiki.com/index.php/File:Lockwood_334B45.jpg",
     },
   },
   {
@@ -641,7 +625,6 @@ const lockCatalog: Omit<LockRecord, "status" | "picked">[] = [
     belt: "Blue",
     resourceLinks: {
       lpu: "https://lpubelts.com/locks/a0ec1618.html",
-      lockWiki: "https://www.lockwiki.com/index.php/File:MTL_Interactive_front_view_-_FXE48058.jpg",
     },
   },
   {
@@ -651,7 +634,6 @@ const lockCatalog: Omit<LockRecord, "status" | "picked">[] = [
     belt: "Blue",
     resourceLinks: {
       lpu: "https://lpubelts.com/locks/6e0bfdd2.html",
-      cataLocks: "https://www.catalocks.eu/photos/991/1.jpg",
     },
   },
   {
@@ -745,7 +727,6 @@ const lockCatalog: Omit<LockRecord, "status" | "picked">[] = [
     belt: "Purple",
     resourceLinks: {
       lpu: "https://lpubelts.com/locks/dd1dd313.html",
-      cataLocks: "https://www.catalocks.eu/photos/53/1.jpg",
     },
   },
   {
@@ -776,7 +757,6 @@ const lockCatalog: Omit<LockRecord, "status" | "picked">[] = [
     belt: "Purple",
     resourceLinks: {
       lpu: "https://lpubelts.com/locks/122b5621.html",
-      cataLocks: "https://www.catalocks.eu/photos/990/1.jpg",
     },
   },
   {
@@ -786,7 +766,6 @@ const lockCatalog: Omit<LockRecord, "status" | "picked">[] = [
     belt: "Purple",
     resourceLinks: {
       lpu: "https://lpubelts.com/locks/f3666121.html",
-      cataLocks: "https://www.catalocks.eu/photos/943/1.jpg",
     },
   },
   {
@@ -816,7 +795,6 @@ const lockCatalog: Omit<LockRecord, "status" | "picked">[] = [
     belt: "Purple",
     resourceLinks: {
       lpu: "https://lpubelts.com/locks/71bce5b7.html",
-      lockWiki: "https://www.lockwiki.com/index.php/File:Corbin_Emhart_cylinder.jpg",
     },
   },
   {
@@ -837,7 +815,6 @@ const lockCatalog: Omit<LockRecord, "status" | "picked">[] = [
     belt: "Purple",
     resourceLinks: {
       lpu: "https://lpubelts.com/locks/8c2983b5.html",
-      lockWiki: "https://www.lockwiki.com/index.php/File:EVVA_DPI_cylinder.jpg",
     },
   },
   {
@@ -857,7 +834,6 @@ const lockCatalog: Omit<LockRecord, "status" | "picked">[] = [
     belt: "Purple",
     resourceLinks: {
       lpu: "https://lpubelts.com/locks/07bc680a.html",
-      lockWiki: "https://www.lockwiki.com/index.php/File:Duo_cylinder.jpg",
     },
   },
   {
@@ -915,7 +891,6 @@ const lockCatalog: Omit<LockRecord, "status" | "picked">[] = [
     belt: "Purple",
     resourceLinks: {
       lpu: "https://lpubelts.com/locks/826c31e0.html",
-      lockWiki: "https://www.lockwiki.com/index.php/File:Medeco_Original_cylinder.jpg",
     },
   },
   {
@@ -936,7 +911,6 @@ const lockCatalog: Omit<LockRecord, "status" | "picked">[] = [
     belt: "Purple",
     resourceLinks: {
       lpu: "https://lpubelts.com/locks/3335df97.html",
-      lockWiki: "https://www.lockwiki.com/index.php/File:MTL_Interactive_front_view_-_FXE48058.jpg",
     },
   },
   {
@@ -983,7 +957,6 @@ const lockCatalog: Omit<LockRecord, "status" | "picked">[] = [
     belt: "Brown",
     resourceLinks: {
       lpu: "https://lpubelts.com/locks/da09d849.html",
-      lockWiki: "https://www.lockwiki.com/index.php/File:Abloy_Classic_cylinder.jpg",
     },
   },
   {
@@ -1004,7 +977,6 @@ const lockCatalog: Omit<LockRecord, "status" | "picked">[] = [
     belt: "Brown",
     resourceLinks: {
       lpu: "https://lpubelts.com/locks/d3ad5a73.html",
-      lockWiki: "https://www.lockwiki.com/index.php/File:Assa_d12_front.jpg",
     },
   },
   {
@@ -1015,7 +987,6 @@ const lockCatalog: Omit<LockRecord, "status" | "picked">[] = [
     belt: "Brown",
     resourceLinks: {
       lpu: "https://lpubelts.com/locks/1459e2c6.html",
-      lockWiki: "https://www.lockwiki.com/index.php/File:ASSA_Desmo_cam_lock_keyway-Gwiens2001.png",
     },
   },
   {
@@ -1043,7 +1014,6 @@ const lockCatalog: Omit<LockRecord, "status" | "picked">[] = [
     belt: "Brown",
     resourceLinks: {
       lpu: "https://lpubelts.com/locks/86e86a1d.html",
-      cataLocks: "https://www.catalocks.eu/photos/909/1.jpg",
     },
   },
   {
@@ -1054,8 +1024,6 @@ const lockCatalog: Omit<LockRecord, "status" | "picked">[] = [
     belt: "Brown",
     resourceLinks: {
       lpu: "https://lpubelts.com/locks/a1233156.html",
-      lockWiki:
-        "https://www.lockwiki.com/index.php/File:Goal_P_front_view_-_IMG_20220302_083530-Reinder.jpg",
     },
   },
   {
@@ -1065,7 +1033,6 @@ const lockCatalog: Omit<LockRecord, "status" | "picked">[] = [
     belt: "Brown",
     resourceLinks: {
       lpu: "https://lpubelts.com/locks/ea1afad0.html",
-      lockWiki: "https://www.lockwiki.com/index.php/File:Schlage_Primus_cylinder.jpg",
     },
   },
   {
@@ -1075,7 +1042,6 @@ const lockCatalog: Omit<LockRecord, "status" | "picked">[] = [
     belt: "Brown",
     resourceLinks: {
       lpu: "https://lpubelts.com/locks/626da374.html",
-      lockWiki: "https://www.lockwiki.com/index.php/File:Scorpion_CX5_cylinder.jpg",
     },
   },
   {
@@ -1114,7 +1080,6 @@ const lockCatalog: Omit<LockRecord, "status" | "picked">[] = [
     belt: "Red",
     resourceLinks: {
       lpu: "https://lpubelts.com/locks/b8350901.html",
-      lockWiki: "https://www.lockwiki.com/index.php/File:ABUS_Plus_88_50_padlock.jpg",
     },
   },
   {
@@ -1145,7 +1110,6 @@ const lockCatalog: Omit<LockRecord, "status" | "picked">[] = [
     belt: "Red",
     resourceLinks: {
       lpu: "https://lpubelts.com/locks/3af2407a.html",
-      cataLocks: "https://www.catalocks.eu/photos/107/1.jpg",
     },
   },
   {
@@ -1222,8 +1186,6 @@ const lockCatalog: Omit<LockRecord, "status" | "picked">[] = [
     belt: "Red",
     resourceLinks: {
       lpu: "https://lpubelts.com/locks/cf76cfde.html",
-      lockWiki:
-        "https://www.lockwiki.com/index.php/File:Everest_29_SL_Primus_XP_keyway-Reinder.png",
     },
   },
   {
@@ -1266,8 +1228,6 @@ const lockCatalog: Omit<LockRecord, "status" | "picked">[] = [
     beltLevel: "Black 2",
     resourceLinks: {
       lpu: "https://lpubelts.com/locks/104776ef.html",
-      lockWiki: "https://www.lockwiki.com/index.php/File:ASSA_Twin_cylinder.jpg",
-      cataLocks: "https://www.catalocks.eu/photos/73/2.jpg",
     },
   },
   {
@@ -1279,7 +1239,6 @@ const lockCatalog: Omit<LockRecord, "status" | "picked">[] = [
     beltLevel: "Black 2",
     resourceLinks: {
       lpu: "https://lpubelts.com/locks/7168d463.html",
-      lockWiki: "https://www.lockwiki.com/index.php/File:ASSA_Twin_Combi_cylinder.jpg",
     },
   },
   {
@@ -1291,8 +1250,6 @@ const lockCatalog: Omit<LockRecord, "status" | "picked">[] = [
     beltLevel: "Black 1",
     resourceLinks: {
       lpu: "https://lpubelts.com/locks/55053299.html",
-      lockWiki: "https://www.lockwiki.com/index.php/File:ASSA_Twin_cylinder.jpg",
-      cataLocks: "https://www.catalocks.eu/photos/73/2.jpg",
     },
   },
   {
@@ -1304,8 +1261,6 @@ const lockCatalog: Omit<LockRecord, "status" | "picked">[] = [
     beltLevel: "Black 1",
     resourceLinks: {
       lpu: "https://lpubelts.com/locks/3f73d2ce.html",
-      lockWiki: "https://www.lockwiki.com/index.php/File:ASSA_Twin_V10_cylinder.jpg",
-      cataLocks: "https://www.catalocks.eu/photos/74/1.jpg",
     },
   },
   {
@@ -1317,7 +1272,6 @@ const lockCatalog: Omit<LockRecord, "status" | "picked">[] = [
     beltLevel: "Black 2",
     resourceLinks: {
       lpu: "https://lpubelts.com/locks/ab1e901f.html",
-      lockWiki: "https://www.lockwiki.com/index.php/File:BiLock_NG_sidebar.jpg",
     },
   },
   {
@@ -1349,7 +1303,6 @@ const lockCatalog: Omit<LockRecord, "status" | "picked">[] = [
     beltLevel: "Black 1",
     resourceLinks: {
       lpu: "https://lpubelts.com/locks/3c73c705.html",
-      lockWiki: "https://www.lockwiki.com/index.php/File:DOM_ix_twinstar_key-Reinder.png",
     },
   },
   {
@@ -1361,7 +1314,6 @@ const lockCatalog: Omit<LockRecord, "status" | "picked">[] = [
     beltLevel: "Black 1",
     resourceLinks: {
       lpu: "https://lpubelts.com/locks/f7452b9f.html",
-      lockWiki: "https://www.lockwiki.com/index.php/File:EVVA_3KS.jpg",
     },
   },
   {
@@ -1394,7 +1346,6 @@ const lockCatalog: Omit<LockRecord, "status" | "picked">[] = [
     beltLevel: "Black 1",
     resourceLinks: {
       lpu: "https://lpubelts.com/locks/5103e650.html",
-      lockWiki: "https://www.lockwiki.com/index.php/File:Goal_Z.jpeg",
     },
   },
   {
@@ -1448,7 +1399,6 @@ const lockCatalog: Omit<LockRecord, "status" | "picked">[] = [
     beltLevel: "Black 1",
     resourceLinks: {
       lpu: "https://lpubelts.com/locks/649eaebc.html",
-      cataLocks: "https://www.catalocks.eu/photos/408/1.jpg",
     },
   },
   {
@@ -1460,7 +1410,6 @@ const lockCatalog: Omit<LockRecord, "status" | "picked">[] = [
     beltLevel: "Black 5",
     resourceLinks: {
       lpu: "https://lpubelts.com/locks/f29a212f.html",
-      lockWiki: "https://www.lockwiki.com/index.php/File:Mersey_Lock_04.jpg",
     },
   },
   {
@@ -1471,7 +1420,6 @@ const lockCatalog: Omit<LockRecord, "status" | "picked">[] = [
     beltLevel: "Black 4",
     resourceLinks: {
       lpu: "https://lpubelts.com/locks/6c0ec943.html",
-      lockWiki: "https://www.lockwiki.com/index.php/File:Opnus_Memolis_keyway_01-Reider.jpg",
     },
   },
   {
@@ -1493,7 +1441,6 @@ const lockCatalog: Omit<LockRecord, "status" | "picked">[] = [
     beltLevel: "Black 1",
     resourceLinks: {
       lpu: "https://lpubelts.com/locks/63a9a2b1.html",
-      cataLocks: "https://www.catalocks.eu/photos/265/1.jpg",
     },
   },
   {
@@ -1514,7 +1461,6 @@ const lockCatalog: Omit<LockRecord, "status" | "picked">[] = [
     beltLevel: "Black 1",
     resourceLinks: {
       lpu: "https://lpubelts.com/locks/3198fffc.html",
-      lockWiki: "https://www.lockwiki.com/index.php/File:Tokoz_Pro_400_cylinder-Least.png",
     },
   },
   {

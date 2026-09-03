@@ -40,29 +40,9 @@ function normalizedBelt(belt) {
   return /^Black [1-5]$/.test(belt) ? "Black" : belt;
 }
 
-function trustedMediaUrl(entry, domain) {
-  return (entry.media ?? [])
-    .map((item) => item.fullUrl)
-    .find((value) => {
-      try {
-        const url = new URL(value);
-        return (
-          url.protocol === "https:" &&
-          (url.hostname === domain || url.hostname.endsWith(`.${domain}`))
-        );
-      } catch {
-        return false;
-      }
-    });
-}
-
 function resourceLinks(entry) {
-  const lockWiki = trustedMediaUrl(entry, "lockwiki.com");
-  const cataLocks = trustedMediaUrl(entry, "catalocks.eu");
   return {
     lpu: `https://lpubelts.com/locks/${entry.id}.html`,
-    ...(lockWiki ? { lockWiki } : {}),
-    ...(cataLocks ? { cataLocks } : {}),
   };
 }
 
