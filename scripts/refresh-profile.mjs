@@ -4,9 +4,7 @@ const PROFILE_ID = "84dULJFIN4bHIC1LxCiuvBCSqT43";
 const LPU_HOME = "https://lpubelts.com/";
 const LPU_DATA =
   "https://raw.githubusercontent.com/Lockpickers-United/lpu-belt-explorer/main/src/data/data.json";
-const LPU_LEADERBOARD = "https://explore.lpubelts.com/data/leaderboardData.json";
 const DATA_FILE = new URL("../app/data.ts", import.meta.url);
-const WISHLIST_OWNERS_FILE = new URL("../app/wishlist-owners.ts", import.meta.url);
 
 async function getText(url) {
   const response = await fetch(url, {
@@ -22,11 +20,6 @@ async function getJson(url) {
 
 function firestoreStrings(field) {
   return field?.arrayValue?.values?.map((value) => value.stringValue).filter(Boolean) ?? [];
-}
-
-function hasPublicDisplayName(value) {
-  const name = value?.trim();
-  return Boolean(name) && name.toLowerCase() !== "no display name";
 }
 
 function lockName(entry) {
@@ -54,6 +47,8 @@ const application = await getText(new URL(assetPath, LPU_HOME));
 const apiKey = application.match(/AIza[0-9A-Za-z_-]{30,}/)?.[0];
 if (!apiKey) throw new Error("Could not locate the public LPU Firebase API key.");
 
+// LPU permits a direct lookup of the configured user's profile. Do not enumerate or batch-read
+// lockcollections here; comparisons use only the two profiles explicitly selected by the user.
 const profileUrl =
   `https://firestore.googleapis.com/v1/projects/lpu-belt-explorer/databases/(default)/documents/` +
   `lockcollections/${PROFILE_ID}?key=${apiKey}`;
@@ -132,97 +127,7 @@ source = source.replace(
 );
 await writeFile(DATA_FILE, source);
 
-const leaderboard = await getJson(LPU_LEADERBOARD);
-const publicProfiles = (leaderboard.data ?? []).filter(
-  (entry) => entry.id && hasPublicDisplayName(entry.displayName),
-);
-const publicProfileNames = new Map(publicProfiles.map((entry) => [entry.id, entry.displayName]));
-const firestorePrefix = "projects/lpu-belt-explorer/databases/(default)/documents/lockcollections/";
-const profileChunks = [];
-for (let index = 0; index < publicProfiles.length; index += 100) {
-  profileChunks.push(publicProfiles.slice(index, index + 100));
-}
-
-const ownersByLock = new Map(allEntries.map((entry) => [entry.id, []]));
-const ownersById = new Map();
-for (let index = 0; index < profileChunks.length; index += 8) {
-  const batch = profileChunks.slice(index, index + 8);
-  const batchResults = await Promise.all(
-    batch.map(async (profiles) => {
-      const response = await fetch(
-        `https://firestore.googleapis.com/v1/projects/lpu-belt-explorer/databases/(default)/documents:batchGet?key=${apiKey}`,
-        {
-          method: "POST",
-          headers: {
-            "content-type": "application/json",
-            "user-agent": "todd-lock-analytics-refresh/1.0",
-          },
-          body: JSON.stringify({
-            documents: profiles.map((entry) => `${firestorePrefix}${entry.id}`),
-            mask: { fieldPaths: ["displayName", "own", "privacyAnonymous"] },
-          }),
-        },
-      );
-      if (!response.ok) {
-        throw new Error(`Public profile batch request failed (${response.status}).`);
-      }
-      return response.json();
-    }),
-  );
-
-  batchResults.flat().forEach((result) => {
-    const document = result.found;
-    if (!document || document.fields?.privacyAnonymous?.booleanValue === true) return;
-
-    const id = document.name.split("/").at(-1);
-    const name =
-      document.fields?.displayName?.stringValue?.trim() || publicProfileNames.get(id)?.trim();
-    if (!id || !hasPublicDisplayName(name)) return;
-
-    ownersById.set(id, {
-      id,
-      name,
-    });
-
-    firestoreStrings(document.fields?.own).forEach((lockId) => {
-      const owners = ownersByLock.get(lockId);
-      if (!owners) return;
-      owners.push(id);
-    });
-  });
-}
-
-const publicOwners = [...ownersById.values()].sort((a, b) =>
-  a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
-);
-const ownerIndexById = new Map(publicOwners.map((owner, index) => [owner.id, index]));
-const ownerIndexesByLock = Object.fromEntries(
-  [...ownersByLock.entries()]
-    .filter(([, owners]) => owners.length)
-    .map(([lockId, owners]) => [
-      lockId,
-      owners
-        .map((id) => ownerIndexById.get(id))
-        .filter((index) => index !== undefined)
-        .sort((a, b) => a - b),
-    ]),
-);
-
-const wishlistOwnersSource = `export type PublicLockOwner = {
-  id: string;
-  name: string;
-};
-
-export const wishlistOwnersUpdatedAt = ${JSON.stringify(refreshedOn)};
-export const publicProfileCount = ${publicProfiles.length};
-export const publicOwners: PublicLockOwner[] = ${JSON.stringify(publicOwners, null, 2)};
-export const ownerIndexesByLock: Record<string, number[]> = ${JSON.stringify(ownerIndexesByLock, null, 2)};
-`;
-
-await writeFile(WISHLIST_OWNERS_FILE, wishlistOwnersSource);
-
 console.log(
   `Refreshed ${selectedEntries.length} locks: ${ownedIds.length} owned, ` +
-    `${wishlistIds.length} wishlist, ${pickedIds.length} picked; indexed ` +
-    `${publicProfiles.length} public profiles for wishlist matching.`,
+    `${wishlistIds.length} wishlist, ${pickedIds.length} picked.`,
 );

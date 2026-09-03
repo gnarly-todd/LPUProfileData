@@ -398,8 +398,7 @@ select:focus-visible {
   gap: 3px;
 }
 
-.saved-profile strong,
-.saved-profile small {
+.saved-profile strong {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2693,111 +2692,6 @@ footer > a {
   }
 }
 
-.wishlist-finder-section {
-  scroll-margin-top: 76px;
-}
-
-.wishlist-finder-meta {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  margin: -10px 0 18px;
-  color: var(--muted);
-  font-size: 11px;
-}
-
-.wishlist-finder-meta span {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-}
-
-.wishlist-table-shell {
-  overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: 22px;
-  background: var(--surface);
-  box-shadow: var(--shadow);
-}
-
-.wishlist-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.wishlist-table th,
-.wishlist-table td {
-  padding: 17px 20px;
-  border-bottom: 1px solid var(--line);
-  text-align: left;
-  vertical-align: top;
-}
-
-.wishlist-table th {
-  color: var(--faint);
-  background: var(--surface-soft);
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-}
-
-.wishlist-table tbody tr:last-child td {
-  border-bottom: 0;
-}
-
-.wishlist-table td:first-child {
-  width: 42%;
-  font-size: 13px;
-}
-
-.wishlist-table td:nth-child(2) {
-  width: 190px;
-}
-
-.wishlist-table details summary {
-  color: var(--accent);
-  font-size: 12px;
-  font-weight: 750;
-  cursor: pointer;
-}
-
-.owner-links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
-  margin-top: 12px;
-}
-
-.owner-links a {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 7px 9px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  color: var(--text);
-  background: var(--surface-soft);
-  font-size: 11px;
-  text-decoration: none;
-}
-
-.owner-links a:hover {
-  border-color: rgba(110, 231, 242, 0.36);
-}
-
-.no-owner-match,
-.wishlist-pending,
-.wishlist-method-note {
-  color: var(--muted);
-  font-size: 11px;
-}
-
-.wishlist-method-note {
-  margin: 15px 3px 0;
-  line-height: 1.6;
-}
-
 .brand-button,
 .comparison-nav button {
   font: inherit;
@@ -2966,6 +2860,97 @@ footer > a {
   padding: 76px 0 0;
 }
 
+.comparison-wishlist-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.comparison-wishlist-card {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.comparison-wishlist-card > header {
+  display: flex;
+  min-height: 96px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 20px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-soft);
+}
+
+.comparison-wishlist-card > header span {
+  color: var(--faint);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.comparison-wishlist-card > header h3 {
+  margin: 6px 0 0;
+  font-size: 19px;
+}
+
+.comparison-wishlist-card > header > strong {
+  color: var(--accent);
+  font-size: 38px;
+  letter-spacing: -0.05em;
+}
+
+.comparison-wishlist-list {
+  max-height: 500px;
+  overflow: auto;
+}
+
+.comparison-wishlist-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.comparison-wishlist-row:last-child {
+  border-bottom: 0;
+}
+
+.comparison-wishlist-row > div {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.comparison-wishlist-row > div > strong {
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.comparison-wishlist-row small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.comparison-wishlist-empty {
+  margin: 0;
+  padding: 26px 20px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
 .belt-comparison-table {
   max-width: 780px;
 }
@@ -3117,15 +3102,11 @@ footer > a {
     display: none;
   }
 
-  .wishlist-table-shell {
-    overflow-x: auto;
-  }
-
-  .wishlist-table {
-    min-width: 690px;
-  }
-
   .comparison-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .comparison-wishlist-grid {
     grid-template-columns: 1fr;
   }
 
@@ -3142,11 +3123,6 @@ footer > a {
   .modal-actions {
     align-items: stretch;
     flex-direction: column-reverse;
-  }
-
-  .wishlist-finder-meta {
-    align-items: flex-start;
-    flex-direction: column;
   }
 
   .comparison-page {

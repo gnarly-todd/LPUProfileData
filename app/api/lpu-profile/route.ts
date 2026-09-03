@@ -189,6 +189,8 @@ export async function GET(request: Request) {
 
   try {
     const [apiKey, catalog] = await Promise.all([getApiKey(), getCatalog()]);
+    // This endpoint reads only the exact public profile submitted by the user. Do not enumerate or
+    // batch-read lockcollections; comparisons use only profiles the user explicitly selects.
     const profileResponse = await fetch(
       `https://firestore.googleapis.com/v1/projects/lpu-belt-explorer/databases/(default)/documents/lockcollections/${parsed.id}?key=${apiKey}`,
       { headers: { "User-Agent": "todd-lock-analytics-profile-loader" } },

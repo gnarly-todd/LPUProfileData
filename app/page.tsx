@@ -11,13 +11,6 @@ import {
   progression,
   statusBenchmarks as communityStatusBenchmarks,
 } from "./data";
-import {
-  ownerIndexesByLock,
-  publicOwners,
-  publicProfileCount,
-  wishlistOwnersUpdatedAt,
-} from "./wishlist-owners";
-
 const SOURCE_URL = "https://lpubelts.com/#/profile/84dULJFIN4bHIC1LxCiuvBCSqT43?name=todd";
 const HOSTED_SITE_ORIGIN = "https://todd-lock-analytics.nicelife70117.chatgpt.site";
 const LPU_STATS_URL = "https://lpubelts.com/#/stats";
@@ -1057,6 +1050,30 @@ function ComparisonPage({
   const wishlistOverlap = left.wishlistLocks.filter((lock) =>
     right.wishlistLocks.some((candidate) => candidate.id === lock.id),
   ).length;
+  const matchWishlistToOwned = (wishlist: LockRecord[], ownerLocksById: Map<string, LockRecord>) =>
+    wishlist
+      .flatMap((lock) => {
+        const ownerLock = ownerLocksById.get(lock.id);
+        return ownerLock?.status === "Owned" ? [{ lock, ownerLock }] : [];
+      })
+      .sort(
+        (a, b) =>
+          beltScore[b.lock.belt] - beltScore[a.lock.belt] ||
+          beltLevelScore(b.lock.beltLevel) - beltLevelScore(a.lock.beltLevel) ||
+          a.lock.name.localeCompare(b.lock.name),
+      );
+  const wishlistMatches = [
+    {
+      wishlistProfile: left.profile,
+      ownerProfile: right.profile,
+      matches: matchWishlistToOwned(left.wishlistLocks, rightById),
+    },
+    {
+      wishlistProfile: right.profile,
+      ownerProfile: left.profile,
+      matches: matchWishlistToOwned(right.wishlistLocks, leftById),
+    },
+  ];
   const summaryRows = [
     { label: "Owned", left: left.ownedLocks.length, right: right.ownedLocks.length },
     { label: "Picked", left: left.ownedPicked, right: right.ownedPicked },
@@ -1154,6 +1171,54 @@ function ComparisonPage({
           </div>
         </section>
 
+        <section className="comparison-section comparison-wishlist-section">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Wishlist opportunities</p>
+              <h2>Locks the other profile owns</h2>
+            </div>
+            <p>Matches use only the two profiles selected for this comparison.</p>
+          </div>
+          <div className="comparison-wishlist-grid">
+            {wishlistMatches.map(({ wishlistProfile, ownerProfile, matches }) => (
+              <article
+                className="comparison-wishlist-card"
+                key={`${wishlistProfile.id}-${ownerProfile.id}`}
+              >
+                <header>
+                  <div>
+                    <span>{wishlistProfile.name}’s wishlist</span>
+                    <h3>{ownerProfile.name} owns</h3>
+                  </div>
+                  <strong>{matches.length.toLocaleString()}</strong>
+                </header>
+                {matches.length ? (
+                  <div className="comparison-wishlist-list">
+                    {matches.map(({ lock, ownerLock }) => (
+                      <div className="comparison-wishlist-row" key={lock.id}>
+                        <div>
+                          <strong>{lock.name}</strong>
+                          {lock.version && <small>{lock.version}</small>}
+                        </div>
+                        <BeltPill belt={lock.belt} label={lock.beltLevel} compact />
+                        <span
+                          className={`comparison-status ${ownerLock.picked ? "picked" : "owned"}`}
+                        >
+                          {ownerLock.picked ? "Picked" : "Owned"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="comparison-wishlist-empty">
+                    {ownerProfile.name} does not own any locks on {wishlistProfile.name}’s wishlist.
+                  </p>
+                )}
+              </article>
+            ))}
+          </div>
+        </section>
+
         <section className="comparison-section">
           <div className="section-heading">
             <div>
@@ -1237,7 +1302,6 @@ function ComparisonPage({
 
 export default function Home() {
   const [activeProfile, setActiveProfile] = useState(defaultProfile);
-  const [activeProfileReady, setActiveProfileReady] = useState(false);
   const analytics = useMemo(() => deriveProfile(activeProfile), [activeProfile]);
   const {
     profile,
@@ -1352,10 +1416,7 @@ export default function Home() {
     const storedActiveId = window.localStorage.getItem(ACTIVE_PROFILE_KEY);
     const selected = profiles.find((item) => item.id === storedActiveId) || defaultSaved;
     window.localStorage.setItem(ACTIVE_PROFILE_KEY, selected.id);
-    if (selected.id === DEFAULT_PROFILE_ID) {
-      setActiveProfileReady(true);
-      return;
-    }
+    if (selected.id === DEFAULT_PROFILE_ID) return;
 
     try {
       const cached = JSON.parse(
@@ -1364,7 +1425,6 @@ export default function Home() {
       if (cached?.id === selected.id && Array.isArray(cached.locks)) {
         setActiveProfile(cached);
         setDisplayedSnapshotDate(cached.refreshedAt);
-        setActiveProfileReady(true);
         return;
       }
     } catch {
@@ -1376,7 +1436,6 @@ export default function Home() {
       .then((loaded) => {
         setActiveProfile(loaded);
         setDisplayedSnapshotDate(loaded.refreshedAt);
-        setActiveProfileReady(true);
         window.sessionStorage.setItem(`lpu-profile-${loaded.id}`, JSON.stringify(loaded));
       })
       .catch((error: unknown) => {
@@ -1386,7 +1445,6 @@ export default function Home() {
         window.localStorage.setItem(ACTIVE_PROFILE_KEY, DEFAULT_PROFILE_ID);
         setActiveProfile(defaultProfile);
         setDisplayedSnapshotDate(profileSnapshotDate);
-        setActiveProfileReady(true);
       })
       .finally(() => setProfileLoading(false));
   }, []);
@@ -1757,20 +1815,6 @@ export default function Home() {
   };
 
   const refreshInProgress = refreshState === "loading" || refreshState === "queued";
-  const wishlistOwnerRows = useMemo(
-    () =>
-      wishlistLocks.map((lock) => ({
-        lockId: lock.id,
-        lockName: lock.name,
-        belt: lock.belt,
-        beltLevel: lock.beltLevel,
-        owners: (ownerIndexesByLock[lock.id] ?? [])
-          .map((ownerIndex) => publicOwners[ownerIndex])
-          .filter(Boolean),
-      })),
-    [wishlistLocks],
-  );
-
   if (comparisonRequested) {
     return (
       <ComparisonPage
@@ -1800,7 +1844,6 @@ export default function Home() {
             <a href="#analysis">Analysis</a>
             <a href="#community">Community</a>
             <a href="#explorer">Explorer</a>
-            <a href="#wishlist-finder">Wishlist finder</a>
           </div>
           <div className="nav-actions">
             <a className="source-link" href={profile.url} target="_blank" rel="noreferrer">
@@ -1856,7 +1899,6 @@ export default function Home() {
                         <Icon name="user" size={16} />
                         <span>
                           <strong>{item.name}</strong>
-                          <small>{item.isDefault ? "Default profile" : "Public profile"}</small>
                         </span>
                         {profile.id === item.id && <Icon name="check" size={16} />}
                       </button>
@@ -2472,94 +2514,6 @@ export default function Home() {
               </button>
             )}
           </div>
-        </section>
-
-        <section className="section wishlist-finder-section" id="wishlist-finder">
-          <SectionHeading
-            eyebrow="Public-profile exchange finder"
-            title={`Who owns ${profile.name}’s wishlist locks?`}
-            copy={`All ${wishlistOwnerRows.length} locks on the active profile’s wishlist are checked against ${publicProfileCount.toLocaleString()} publicly indexed LPU profiles. Changing profiles automatically updates this finder.`}
-          />
-          <div className="wishlist-finder-meta">
-            <span>
-              <Icon name="refresh" size={15} /> Updated {wishlistOwnersUpdatedAt}
-            </span>
-            <span>Active profile: {profile.name}</span>
-            <span>Anonymous profiles are excluded</span>
-          </div>
-          <div className="wishlist-table-shell">
-            <table className="wishlist-table">
-              <thead>
-                <tr>
-                  <th>Wishlist lock</th>
-                  <th>Belt rank</th>
-                  <th>Public owners</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(activeProfileReady ? [...wishlistOwnerRows] : [])
-                  .sort(
-                    (a, b) =>
-                      beltScore[b.belt] - beltScore[a.belt] ||
-                      beltLevelScore(b.beltLevel) - beltLevelScore(a.beltLevel) ||
-                      a.lockName.localeCompare(b.lockName),
-                  )
-                  .map((row) => (
-                    <tr key={row.lockId}>
-                      <td>
-                        <strong>{row.lockName}</strong>
-                      </td>
-                      <td>
-                        <BeltPill belt={row.belt} label={row.beltLevel} compact />
-                      </td>
-                      <td>
-                        {row.owners.length ? (
-                          <details>
-                            <summary>
-                              {row.owners.length.toLocaleString()} public{" "}
-                              {row.owners.length === 1 ? "profile" : "profiles"}
-                            </summary>
-                            <div className="owner-links">
-                              {row.owners.map((owner) => (
-                                <a
-                                  key={owner.id}
-                                  href={`https://lpubelts.com/#/profile/${owner.id}?name=${encodeURIComponent(owner.name)}`}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                >
-                                  {owner.name}
-                                  <Icon name="external" size={13} />
-                                </a>
-                              ))}
-                            </div>
-                          </details>
-                        ) : (
-                          <span className="no-owner-match">No public matches</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                {!activeProfileReady && (
-                  <tr>
-                    <td colSpan={3} className="wishlist-pending">
-                      Loading the active profile’s wishlist…
-                    </td>
-                  </tr>
-                )}
-                {activeProfileReady && !wishlistOwnerRows.length && (
-                  <tr>
-                    <td colSpan={3} className="wishlist-pending">
-                      {profile.name} has no wishlist locks.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-          <p className="wishlist-method-note">
-            Matches reflect public LPU profile data at the update time above. Ownership can change,
-            and a match is not an offer to sell or trade.
-          </p>
         </section>
 
         <footer>
