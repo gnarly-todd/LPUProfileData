@@ -272,6 +272,69 @@ select:focus-visible {
   text-transform: uppercase;
 }
 
+.saved-profile-row {
+  border-radius: 10px;
+}
+
+.saved-profile-row:has(.remove-profile) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 34px;
+  align-items: center;
+}
+
+.saved-profile-row:hover {
+  background: var(--surface-soft);
+}
+
+.saved-profile {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  gap: 9px;
+  padding: 11px;
+  border: 0;
+  border-radius: 10px;
+  color: var(--text);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.saved-profile > span {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.saved-profile strong,
+.saved-profile small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.remove-profile {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 1px solid rgba(255, 102, 117, 0.28);
+  border-radius: 8px;
+  color: #ff6675;
+  background: rgba(255, 75, 94, 0.08);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.remove-profile:hover {
+  border-color: rgba(255, 102, 117, 0.68);
+  color: #ff8c98;
+  background: rgba(255, 75, 94, 0.16);
+}
+
 .profile-modal-backdrop {
   position: fixed;
   z-index: 100;

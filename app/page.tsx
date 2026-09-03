@@ -1202,6 +1202,24 @@ export default function Home() {
     window.location.reload();
   };
 
+  const removeProfile = (removed: SavedProfile) => {
+    if (removed.id === DEFAULT_PROFILE_ID) return;
+
+    const remaining = savedProfiles.filter((item) => item.id !== removed.id);
+    setSavedProfiles(remaining);
+    window.localStorage.setItem(
+      SAVED_PROFILES_KEY,
+      JSON.stringify(remaining.filter((item) => item.id !== DEFAULT_PROFILE_ID)),
+    );
+    window.sessionStorage.removeItem(`lpu-profile-${removed.id}`);
+
+    if (profile.id === removed.id) {
+      window.localStorage.setItem(ACTIVE_PROFILE_KEY, DEFAULT_PROFILE_ID);
+      setProfileMenuOpen(false);
+      window.location.reload();
+    }
+  };
+
   const addProfile = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setProfileError("");
@@ -1297,23 +1315,35 @@ export default function Home() {
                   </button>
                   <div className="profile-menu-label">Profiles on this device</div>
                   {savedProfiles.map((item) => (
-                    <button
-                      type="button"
-                      className="saved-profile"
-                      key={item.id}
-                      onClick={() => selectProfile(item)}
-                      role="menuitemradio"
-                      aria-checked={profile.id === item.id}
-                    >
-                      <Icon name="user" size={16} />
-                      <span>
-                        <strong>{item.name}</strong>
-                        <small>
-                          {item.id === DEFAULT_PROFILE_ID ? "Default profile" : "Public profile"}
-                        </small>
-                      </span>
-                      {profile.id === item.id && <Icon name="check" size={16} />}
-                    </button>
+                    <div className="saved-profile-row" key={item.id}>
+                      <button
+                        type="button"
+                        className="saved-profile"
+                        onClick={() => selectProfile(item)}
+                        role="menuitemradio"
+                        aria-checked={profile.id === item.id}
+                      >
+                        <Icon name="user" size={16} />
+                        <span>
+                          <strong>{item.name}</strong>
+                          <small>
+                            {item.id === DEFAULT_PROFILE_ID ? "Default profile" : "Public profile"}
+                          </small>
+                        </span>
+                        {profile.id === item.id && <Icon name="check" size={16} />}
+                      </button>
+                      {item.id !== DEFAULT_PROFILE_ID && (
+                        <button
+                          type="button"
+                          className="remove-profile"
+                          onClick={() => removeProfile(item)}
+                          aria-label={`Remove ${item.name} profile`}
+                          title={`Remove ${item.name}`}
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
                   ))}
                 </div>
               )}
