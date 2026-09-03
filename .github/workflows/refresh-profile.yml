@@ -2,8 +2,8 @@ name: Refresh LPU profile data
 
 on:
   schedule:
-    - cron: "0 8 * * *"
-      timezone: "America/New_York"
+    # GitHub schedules use UTC. Run at both possible UTC hours, then keep only 8 AM New York time.
+    - cron: "0 12,13 * * *"
   workflow_dispatch:
 
 permissions:
@@ -16,8 +16,28 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  schedule-gate:
+    name: Check New York refresh time
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.time.outputs.should_run }}
+    steps:
+      - name: Continue at 8 AM New York time or for a manual refresh
+        id: time
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [[ "$EVENT_NAME" != "schedule" || "$(TZ=America/New_York date +%H)" == "08" ]]; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+          fi
+
   refresh:
     name: Refresh, validate, and package
+    needs: schedule-gate
+    if: needs.schedule-gate.outputs.should_run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     outputs:
@@ -47,7 +67,7 @@ jobs:
         run: npm run refresh:data
 
       - name: Format generated data
-        run: npm run format -- app/data.ts
+        run: npm run format -- app/data.ts app/wishlist-owners.ts
 
       - name: Validate source
         run: npm run lint
@@ -70,7 +90,7 @@ jobs:
         env:
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
-          if git diff --quiet -- app/data.ts; then
+          if git diff --quiet -- app/data.ts app/wishlist-owners.ts; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "LPU profile data is already current."
             exit 0
@@ -78,7 +98,7 @@ jobs:
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add app/data.ts
+          git add app/data.ts app/wishlist-owners.ts
           git commit -m "Refresh LPU profile data"
           git push origin "HEAD:${DEFAULT_BRANCH}"
           echo "changed=true" >> "$GITHUB_OUTPUT"
