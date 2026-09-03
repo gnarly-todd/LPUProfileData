@@ -20,6 +20,7 @@ const LPU_STATS_SNAPSHOT = "September 2, 2026";
 const DEFAULT_PROFILE_ID = "84dULJFIN4bHIC1LxCiuvBCSqT43";
 const SAVED_PROFILES_KEY = "todd-lock-analytics-profiles-v1";
 const ACTIVE_PROFILE_KEY = "todd-lock-analytics-active-profile-v1";
+const DEFAULT_PROFILE_OVERRIDE_KEY = "todd-lock-analytics-default-profile-v1";
 const rankedBelts = beltOrder.filter((belt) => belt !== "Unranked");
 const displayBelts: Belt[] = ["Unranked", ...rankedBelts];
 const beltScore = Object.fromEntries(
@@ -67,7 +68,7 @@ type LoadedProfile = {
   refreshedAt: string;
 };
 
-type SavedProfile = Pick<LoadedProfile, "id" | "name" | "url">;
+type SavedProfile = Pick<LoadedProfile, "id" | "name" | "url"> & { isDefault: boolean };
 
 const defaultProfile: LoadedProfile = {
   id: DEFAULT_PROFILE_ID,
@@ -76,6 +77,24 @@ const defaultProfile: LoadedProfile = {
   locks: defaultLocks,
   refreshedAt: profileSnapshotDate,
 };
+
+const builtInDefaultProfile: SavedProfile = {
+  id: defaultProfile.id,
+  name: defaultProfile.name,
+  url: defaultProfile.url,
+  isDefault: true,
+};
+
+function isStoredProfile(value: unknown): value is Omit<SavedProfile, "isDefault"> {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Partial<SavedProfile>;
+  return (
+    typeof candidate.id === "string" &&
+    typeof candidate.name === "string" &&
+    typeof candidate.url === "string" &&
+    isValidLpuProfileUrl(candidate.url)
+  );
+}
 
 const brandFamilies = [
   "ASSA",
@@ -286,6 +305,12 @@ const iconPaths: Record<string, React.ReactNode> = {
   plus: <path d="M12 5v14M5 12h14" />,
   chevron: <path d="m7 10 5 5 5-5" />,
   check: <path d="m5 12 4 4L19 6" />,
+  edit: (
+    <>
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z" />
+    </>
+  ),
 };
 
 function Icon({ name, size = 18 }: { name: string; size?: number }) {
@@ -907,11 +932,10 @@ export default function Home() {
   const [refreshState, setRefreshState] = useState<"idle" | "loading" | "queued" | "error">("idle");
   const [refreshMessage, setRefreshMessage] = useState("");
   const [displayedSnapshotDate, setDisplayedSnapshotDate] = useState(profileSnapshotDate);
-  const [savedProfiles, setSavedProfiles] = useState<SavedProfile[]>([
-    { id: defaultProfile.id, name: defaultProfile.name, url: defaultProfile.url },
-  ]);
+  const [savedProfiles, setSavedProfiles] = useState<SavedProfile[]>([builtInDefaultProfile]);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [addProfileOpen, setAddProfileOpen] = useState(false);
+  const [editingProfile, setEditingProfile] = useState<SavedProfile | null>(null);
   const [profileUrlInput, setProfileUrlInput] = useState("");
   const [profileError, setProfileError] = useState("");
   const [profileLoading, setProfileLoading] = useState(false);
@@ -919,35 +943,43 @@ export default function Home() {
   const profileMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const defaultSaved: SavedProfile = {
-      id: defaultProfile.id,
-      name: defaultProfile.name,
-      url: defaultProfile.url,
-    };
-    let stored: SavedProfile[] = [];
+    let defaultSaved = builtInDefaultProfile;
+    let stored: Omit<SavedProfile, "isDefault">[] = [];
     try {
-      stored = JSON.parse(window.localStorage.getItem(SAVED_PROFILES_KEY) || "[]");
+      const defaultOverride = JSON.parse(
+        window.localStorage.getItem(DEFAULT_PROFILE_OVERRIDE_KEY) || "null",
+      ) as unknown;
+      if (isStoredProfile(defaultOverride)) defaultSaved = { ...defaultOverride, isDefault: true };
+
+      const storedValue = JSON.parse(
+        window.localStorage.getItem(SAVED_PROFILES_KEY) || "[]",
+      ) as unknown;
+      if (Array.isArray(storedValue)) stored = storedValue.filter(isStoredProfile);
     } catch {
       stored = [];
     }
     const profiles = [
       defaultSaved,
-      ...stored.filter(
-        (item) => item?.id && item?.name && item?.url && item.id !== DEFAULT_PROFILE_ID,
-      ),
+      ...stored
+        .filter(
+          (item, index) =>
+            item.id !== defaultSaved.id &&
+            stored.findIndex((other) => other.id === item.id) === index,
+        )
+        .map((item) => ({ ...item, isDefault: false })),
     ];
     setSavedProfiles(profiles);
 
-    const activeId = window.localStorage.getItem(ACTIVE_PROFILE_KEY) || DEFAULT_PROFILE_ID;
-    if (activeId === DEFAULT_PROFILE_ID) return;
-    const selected = profiles.find((item) => item.id === activeId);
-    if (!selected) return;
+    const storedActiveId = window.localStorage.getItem(ACTIVE_PROFILE_KEY);
+    const selected = profiles.find((item) => item.id === storedActiveId) || defaultSaved;
+    window.localStorage.setItem(ACTIVE_PROFILE_KEY, selected.id);
+    if (selected.id === DEFAULT_PROFILE_ID) return;
 
     try {
       const cached = JSON.parse(
-        window.sessionStorage.getItem(`lpu-profile-${activeId}`) || "null",
+        window.sessionStorage.getItem(`lpu-profile-${selected.id}`) || "null",
       ) as LoadedProfile | null;
-      if (cached?.id === activeId && Array.isArray(cached.locks)) {
+      if (cached?.id === selected.id && Array.isArray(cached.locks)) {
         setActiveProfile(cached);
         setDisplayedSnapshotDate(cached.refreshedAt);
         return;
@@ -1202,25 +1234,40 @@ export default function Home() {
     window.location.reload();
   };
 
+  const saveAddedProfiles = (profiles: SavedProfile[]) => {
+    window.localStorage.setItem(
+      SAVED_PROFILES_KEY,
+      JSON.stringify(
+        profiles.filter((item) => !item.isDefault).map(({ id, name, url }) => ({ id, name, url })),
+      ),
+    );
+  };
+
   const removeProfile = (removed: SavedProfile) => {
-    if (removed.id === DEFAULT_PROFILE_ID) return;
+    if (removed.isDefault) return;
 
     const remaining = savedProfiles.filter((item) => item.id !== removed.id);
     setSavedProfiles(remaining);
-    window.localStorage.setItem(
-      SAVED_PROFILES_KEY,
-      JSON.stringify(remaining.filter((item) => item.id !== DEFAULT_PROFILE_ID)),
-    );
+    saveAddedProfiles(remaining);
     window.sessionStorage.removeItem(`lpu-profile-${removed.id}`);
 
     if (profile.id === removed.id) {
-      window.localStorage.setItem(ACTIVE_PROFILE_KEY, DEFAULT_PROFILE_ID);
+      const defaultSlot = remaining.find((item) => item.isDefault) || builtInDefaultProfile;
+      window.localStorage.setItem(ACTIVE_PROFILE_KEY, defaultSlot.id);
       setProfileMenuOpen(false);
       window.location.reload();
     }
   };
 
-  const addProfile = async (event: React.FormEvent<HTMLFormElement>) => {
+  const openProfileEditor = (selected: SavedProfile | null) => {
+    setProfileMenuOpen(false);
+    setProfileError("");
+    setEditingProfile(selected);
+    setProfileUrlInput(selected?.url || "");
+    setAddProfileOpen(true);
+  };
+
+  const saveProfile = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setProfileError("");
     if (!isValidLpuProfileUrl(profileUrlInput)) {
@@ -1233,18 +1280,61 @@ export default function Home() {
     setProfileLoading(true);
     try {
       const loaded = await fetchLpuProfile(profileUrlInput);
-      const newSaved: SavedProfile = { id: loaded.id, name: loaded.name, url: loaded.url };
-      const nextProfiles = [
-        { id: defaultProfile.id, name: defaultProfile.name, url: defaultProfile.url },
-        ...savedProfiles.filter((item) => item.id !== DEFAULT_PROFILE_ID && item.id !== loaded.id),
-        ...(loaded.id === DEFAULT_PROFILE_ID ? [] : [newSaved]),
-      ];
-      window.localStorage.setItem(SAVED_PROFILES_KEY, JSON.stringify(nextProfiles.slice(1)));
-      window.localStorage.setItem(ACTIVE_PROFILE_KEY, loaded.id);
+      const conflict = savedProfiles.find(
+        (item) => item.id === loaded.id && item.id !== editingProfile?.id,
+      );
+      if (conflict && editingProfile) {
+        throw new Error(`${loaded.name} is already in the profile list.`);
+      }
+
+      const activeId = window.localStorage.getItem(ACTIVE_PROFILE_KEY);
+      let nextProfiles: SavedProfile[];
+      let nextActiveId: string;
+
+      if (editingProfile) {
+        const replacement: SavedProfile = {
+          id: loaded.id,
+          name: loaded.name,
+          url: loaded.url,
+          isDefault: editingProfile.isDefault,
+        };
+        nextProfiles = savedProfiles.map((item) =>
+          item.id === editingProfile.id ? replacement : item,
+        );
+        nextActiveId = activeId === editingProfile.id ? loaded.id : activeId || nextProfiles[0].id;
+
+        if (editingProfile.isDefault) {
+          if (loaded.id === DEFAULT_PROFILE_ID) {
+            window.localStorage.removeItem(DEFAULT_PROFILE_OVERRIDE_KEY);
+          } else {
+            window.localStorage.setItem(
+              DEFAULT_PROFILE_OVERRIDE_KEY,
+              JSON.stringify({ id: loaded.id, name: loaded.name, url: loaded.url }),
+            );
+          }
+        }
+        if (editingProfile.id !== loaded.id) {
+          window.sessionStorage.removeItem(`lpu-profile-${editingProfile.id}`);
+        }
+      } else if (conflict) {
+        nextProfiles = savedProfiles.map((item) =>
+          item.id === loaded.id ? { ...item, name: loaded.name, url: loaded.url } : item,
+        );
+        nextActiveId = loaded.id;
+      } else {
+        nextProfiles = [
+          ...savedProfiles,
+          { id: loaded.id, name: loaded.name, url: loaded.url, isDefault: false },
+        ];
+        nextActiveId = loaded.id;
+      }
+
+      saveAddedProfiles(nextProfiles);
+      window.localStorage.setItem(ACTIVE_PROFILE_KEY, nextActiveId);
       window.sessionStorage.setItem(`lpu-profile-${loaded.id}`, JSON.stringify(loaded));
       window.location.reload();
     } catch (error) {
-      setProfileError(error instanceof Error ? error.message : "This profile could not be added.");
+      setProfileError(error instanceof Error ? error.message : "This profile could not be saved.");
       setProfileLoading(false);
     }
   };
@@ -1303,16 +1393,7 @@ export default function Home() {
                       <small>Load the latest LPU data</small>
                     </span>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setProfileMenuOpen(false);
-                      setProfileError("");
-                      setProfileUrlInput("");
-                      setAddProfileOpen(true);
-                    }}
-                    role="menuitem"
-                  >
+                  <button type="button" onClick={() => openProfileEditor(null)} role="menuitem">
                     <Icon name="plus" size={16} />
                     <span>
                       <strong>Add profile</strong>
@@ -1332,23 +1413,34 @@ export default function Home() {
                         <Icon name="user" size={16} />
                         <span>
                           <strong>{item.name}</strong>
-                          <small>
-                            {item.id === DEFAULT_PROFILE_ID ? "Default profile" : "Public profile"}
-                          </small>
+                          <small>{item.isDefault ? "Default profile" : "Public profile"}</small>
                         </span>
                         {profile.id === item.id && <Icon name="check" size={16} />}
                       </button>
-                      {item.id !== DEFAULT_PROFILE_ID && (
+                      <div className="profile-row-actions">
                         <button
                           type="button"
-                          className="remove-profile"
-                          onClick={() => removeProfile(item)}
-                          aria-label={`Remove ${item.name} profile`}
-                          title={`Remove ${item.name}`}
+                          className="edit-profile"
+                          onClick={() => openProfileEditor(item)}
+                          role="menuitem"
+                          aria-label={`Edit ${item.name} profile`}
+                          title={`Edit ${item.name}`}
                         >
-                          ×
+                          <Icon name="edit" size={14} />
                         </button>
-                      )}
+                        {!item.isDefault && (
+                          <button
+                            type="button"
+                            className="remove-profile"
+                            onClick={() => removeProfile(item)}
+                            role="menuitem"
+                            aria-label={`Remove ${item.name} profile`}
+                            title={`Remove ${item.name}`}
+                          >
+                            ×
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -1377,7 +1469,7 @@ export default function Home() {
               className="profile-modal"
               role="dialog"
               aria-modal="true"
-              aria-labelledby="add-profile-title"
+              aria-labelledby="profile-editor-title"
               onMouseDown={(event) => event.stopPropagation()}
             >
               <button
@@ -1389,12 +1481,15 @@ export default function Home() {
                 ×
               </button>
               <p className="eyebrow">Profile switcher</p>
-              <h2 id="add-profile-title">Add an LPU profile</h2>
+              <h2 id="profile-editor-title">
+                {editingProfile ? `Edit ${editingProfile.name}` : "Add an LPU profile"}
+              </h2>
               <p>
-                Paste the complete public profile link from lpubelts.com. The profile stays saved in
-                this browser.
+                {editingProfile
+                  ? "Replace this saved entry with another public lpubelts.com profile. The page reloads after the change."
+                  : "Paste the complete public profile link from lpubelts.com. The profile stays saved in this browser."}
               </p>
-              <form onSubmit={addProfile} noValidate>
+              <form onSubmit={saveProfile} noValidate>
                 <label htmlFor="profile-url">LPU profile link</label>
                 <input
                   id="profile-url"
@@ -1426,7 +1521,11 @@ export default function Home() {
                     Cancel
                   </button>
                   <button type="submit" className="primary-button" disabled={profileLoading}>
-                    {profileLoading ? "Loading profile…" : "Add and view profile"}
+                    {profileLoading
+                      ? "Loading profile…"
+                      : editingProfile
+                        ? "Save profile"
+                        : "Add and view profile"}
                   </button>
                 </div>
               </form>

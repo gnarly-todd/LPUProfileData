@@ -284,13 +284,10 @@ select:focus-visible {
 }
 
 .saved-profile-row {
-  border-radius: 10px;
-}
-
-.saved-profile-row:has(.remove-profile) {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 34px;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
+  border-radius: 10px;
 }
 
 .saved-profile-row:hover {
@@ -326,6 +323,14 @@ select:focus-visible {
   white-space: nowrap;
 }
 
+.profile-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding-right: 5px;
+}
+
+.edit-profile,
 .remove-profile {
   display: grid;
   width: 28px;
@@ -338,6 +343,17 @@ select:focus-visible {
   font-size: 18px;
   line-height: 1;
   cursor: pointer;
+}
+
+.edit-profile {
+  border-color: rgba(110, 231, 242, 0.25);
+  color: var(--accent);
+  background: rgba(110, 231, 242, 0.06);
+}
+
+.edit-profile:hover {
+  border-color: rgba(110, 231, 242, 0.58);
+  background: rgba(110, 231, 242, 0.13);
 }
 
 .remove-profile:hover {
