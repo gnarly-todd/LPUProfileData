@@ -166,6 +166,7 @@ select:focus-visible {
 
 .source-link,
 .refresh-button,
+.profile-button,
 .icon-button {
   display: inline-flex;
   align-items: center;
@@ -183,6 +184,208 @@ select:focus-visible {
 
 .source-link {
   padding: 0 12px;
+}
+
+.profile-menu-wrap {
+  position: relative;
+}
+
+.profile-button {
+  padding: 0 11px;
+  cursor: pointer;
+}
+
+.profile-button.active,
+.profile-button:hover {
+  color: var(--text);
+  border-color: rgba(110, 231, 242, 0.42);
+}
+
+.profile-button svg:last-child {
+  transition: transform 160ms ease;
+}
+
+.profile-button.active svg:last-child {
+  transform: rotate(180deg);
+}
+
+.profile-menu {
+  position: absolute;
+  z-index: 80;
+  top: calc(100% + 10px);
+  right: 0;
+  width: min(310px, calc(100vw - 28px));
+  padding: 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--surface-strong) 96%, transparent);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(22px);
+}
+
+.profile-menu > button {
+  display: grid;
+  grid-template-columns: 24px 1fr auto;
+  align-items: center;
+  width: 100%;
+  gap: 9px;
+  padding: 11px;
+  border: 0;
+  border-radius: 10px;
+  color: var(--text);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.profile-menu > button:hover {
+  background: var(--surface-soft);
+}
+
+.profile-menu > button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.profile-menu > button > span {
+  display: grid;
+  gap: 3px;
+}
+
+.profile-menu strong {
+  font-size: 12px;
+}
+
+.profile-menu small {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.profile-menu-label {
+  margin: 7px 6px 3px;
+  padding-top: 9px;
+  border-top: 1px solid var(--line);
+  color: var(--faint);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.profile-modal-backdrop {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(4, 8, 15, 0.76);
+  backdrop-filter: blur(12px);
+}
+
+.profile-modal {
+  position: relative;
+  width: min(100%, 540px);
+  padding: 34px;
+  border: 1px solid var(--line-strong);
+  border-radius: 24px;
+  background: var(--surface-strong);
+  box-shadow: var(--shadow);
+}
+
+.profile-modal h2 {
+  margin: 7px 0 10px;
+  font-size: clamp(25px, 4vw, 35px);
+}
+
+.profile-modal > p:not(.eyebrow) {
+  margin: 0 0 24px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.profile-modal form,
+.profile-modal form label {
+  display: grid;
+  gap: 8px;
+}
+
+.profile-modal form label {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.profile-modal input {
+  width: 100%;
+  padding: 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  color: var(--text);
+  background: var(--bg-soft);
+}
+
+.profile-modal form > small {
+  color: var(--faint);
+  font-size: 11px;
+}
+
+.profile-error {
+  margin: 4px 0 0;
+  color: #ff9a9a;
+  font-size: 12px;
+}
+
+.modal-close {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--muted);
+  background: var(--surface-soft);
+  cursor: pointer;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.modal-actions button {
+  min-height: 43px;
+}
+
+.profile-loading {
+  position: fixed;
+  z-index: 90;
+  top: 92px;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 11px 16px;
+  border: 1px solid rgba(110, 231, 242, 0.35);
+  border-radius: 999px;
+  color: var(--text);
+  background: var(--surface-strong);
+  box-shadow: var(--shadow);
+  font-size: 12px;
+  transform: translateX(-50%);
+}
+
+.profile-loading svg {
+  animation: refresh-spin 850ms linear infinite;
+}
+
+.profile-data-note {
+  margin: 32px 0 0;
+  color: var(--muted);
+  line-height: 1.7;
 }
 
 .refresh-button {
@@ -2289,5 +2492,144 @@ footer > a {
   *::before,
   *::after {
     transition-duration: 0.01ms !important;
+  }
+}
+
+.wishlist-finder-section {
+  scroll-margin-top: 76px;
+}
+
+.wishlist-finder-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin: -10px 0 18px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.wishlist-finder-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.wishlist-table-shell {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.wishlist-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.wishlist-table th,
+.wishlist-table td {
+  padding: 17px 20px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+
+.wishlist-table th {
+  color: var(--faint);
+  background: var(--surface-soft);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.wishlist-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.wishlist-table td:first-child {
+  width: 42%;
+  font-size: 13px;
+}
+
+.wishlist-table td:nth-child(2) {
+  width: 190px;
+}
+
+.wishlist-table details summary {
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.owner-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.owner-links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  background: var(--surface-soft);
+  font-size: 11px;
+  text-decoration: none;
+}
+
+.owner-links a:hover {
+  border-color: rgba(110, 231, 242, 0.36);
+}
+
+.no-owner-match,
+.wishlist-pending,
+.wishlist-method-note {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.wishlist-method-note {
+  margin: 15px 3px 0;
+  line-height: 1.6;
+}
+
+@media (max-width: 820px) {
+  .profile-button span {
+    display: none;
+  }
+
+  .profile-button svg:last-child {
+    display: none;
+  }
+
+  .wishlist-table-shell {
+    overflow-x: auto;
+  }
+
+  .wishlist-table {
+    min-width: 690px;
+  }
+}
+
+@media (max-width: 620px) {
+  .profile-modal {
+    padding: 28px 20px 22px;
+  }
+
+  .modal-actions {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+
+  .wishlist-finder-meta {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }

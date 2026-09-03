@@ -4,7 +4,9 @@ const PROFILE_ID = "84dULJFIN4bHIC1LxCiuvBCSqT43";
 const LPU_HOME = "https://lpubelts.com/";
 const LPU_DATA =
   "https://raw.githubusercontent.com/Lockpickers-United/lpu-belt-explorer/main/src/data/data.json";
+const LPU_LEADERBOARD = "https://explore.lpubelts.com/data/leaderboardData.json";
 const DATA_FILE = new URL("../app/data.ts", import.meta.url);
+const WISHLIST_OWNERS_FILE = new URL("../app/wishlist-owners.ts", import.meta.url);
 
 async function getText(url) {
   const response = await fetch(url, {
@@ -118,7 +120,101 @@ source = source.replace(
 );
 await writeFile(DATA_FILE, source);
 
+const leaderboard = await getJson(LPU_LEADERBOARD);
+const publicProfiles = (leaderboard.data ?? []).filter(
+  (entry) => entry.id && entry.id !== PROFILE_ID && entry.displayName,
+);
+const publicProfileNames = new Map(publicProfiles.map((entry) => [entry.id, entry.displayName]));
+const firestorePrefix = "projects/lpu-belt-explorer/databases/(default)/documents/lockcollections/";
+const profileChunks = [];
+for (let index = 0; index < publicProfiles.length; index += 100) {
+  profileChunks.push(publicProfiles.slice(index, index + 100));
+}
+
+const ownersByLock = new Map(wishlistIds.map((id) => [id, []]));
+for (let index = 0; index < profileChunks.length; index += 8) {
+  const batch = profileChunks.slice(index, index + 8);
+  const batchResults = await Promise.all(
+    batch.map(async (profiles) => {
+      const response = await fetch(
+        `https://firestore.googleapis.com/v1/projects/lpu-belt-explorer/databases/(default)/documents:batchGet?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "user-agent": "todd-lock-analytics-refresh/1.0",
+          },
+          body: JSON.stringify({
+            documents: profiles.map((entry) => `${firestorePrefix}${entry.id}`),
+            mask: { fieldPaths: ["displayName", "own", "privacyAnonymous"] },
+          }),
+        },
+      );
+      if (!response.ok) {
+        throw new Error(`Public profile batch request failed (${response.status}).`);
+      }
+      return response.json();
+    }),
+  );
+
+  batchResults.flat().forEach((result) => {
+    const document = result.found;
+    if (!document || document.fields?.privacyAnonymous?.booleanValue === true) return;
+
+    const id = document.name.split("/").at(-1);
+    const name =
+      document.fields?.displayName?.stringValue?.trim() || publicProfileNames.get(id)?.trim();
+    if (!id || !name) return;
+
+    firestoreStrings(document.fields?.own).forEach((lockId) => {
+      const owners = ownersByLock.get(lockId);
+      if (!owners) return;
+      owners.push({
+        id,
+        name,
+        url: `https://lpubelts.com/#/profile/${id}?name=${encodeURIComponent(name)}`,
+      });
+    });
+  });
+}
+
+const wishlistOwnerRows = catalog
+  .filter((entry) => ownersByLock.has(entry.id))
+  .map((entry) => ({
+    lockId: entry.id,
+    lockName: entry.name,
+    belt: entry.belt,
+    ...(entry.beltLevel ? { beltLevel: entry.beltLevel } : {}),
+    owners: ownersByLock
+      .get(entry.id)
+      .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" })),
+  }));
+
+const wishlistOwnersSource = `import type { Belt, LockRecord } from "./data";
+
+export type WishlistOwner = {
+  id: string;
+  name: string;
+  url: string;
+};
+
+export type WishlistOwnerRow = {
+  lockId: string;
+  lockName: string;
+  belt: Belt;
+  beltLevel?: LockRecord["beltLevel"];
+  owners: WishlistOwner[];
+};
+
+export const wishlistOwnersUpdatedAt = ${JSON.stringify(refreshedOn)};
+export const publicProfileCount = ${publicProfiles.length + 1};
+export const wishlistOwnerRows: WishlistOwnerRow[] = ${JSON.stringify(wishlistOwnerRows, null, 2)};
+`;
+
+await writeFile(WISHLIST_OWNERS_FILE, wishlistOwnersSource);
+
 console.log(
   `Refreshed ${selectedEntries.length} locks: ${ownedIds.length} owned, ` +
-    `${wishlistIds.length} wishlist, ${pickedIds.length} picked.`,
+    `${wishlistIds.length} wishlist, ${pickedIds.length} picked; scanned ` +
+    `${publicProfiles.length + 1} public profiles for wishlist matches.`,
 );
