@@ -1,7 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 
 const PROFILE_ID = "84dULJFIN4bHIC1LxCiuvBCSqT43";
-const LPU_HOME = "https://lpubelts.com/";
+const LPU_USER_API = "https://explore.lpubelts.com/services/api/v1/users";
 const LPU_DATA =
   "https://raw.githubusercontent.com/Lockpickers-United/lpu-belt-explorer/main/src/data/data.json";
 const DATA_FILE = new URL("../app/data.ts", import.meta.url);
@@ -18,8 +18,8 @@ async function getJson(url) {
   return JSON.parse(await getText(url));
 }
 
-function firestoreStrings(field) {
-  return field?.arrayValue?.values?.map((value) => value.stringValue).filter(Boolean) ?? [];
+function collectionStrings(value) {
+  return Array.isArray(value) ? value.filter((item) => typeof item === "string") : [];
 }
 
 function lockName(entry) {
@@ -39,24 +39,20 @@ function resourceLinks(entry) {
   };
 }
 
-const home = await getText(LPU_HOME);
-const assetPath = home.match(/assets\/index-[A-Za-z0-9_-]+\.js/)?.[0];
-if (!assetPath) throw new Error("Could not locate the current LPU application asset.");
-
-const application = await getText(new URL(assetPath, LPU_HOME));
-const apiKey = application.match(/AIza[0-9A-Za-z_-]{30,}/)?.[0];
-if (!apiKey) throw new Error("Could not locate the public LPU Firebase API key.");
-
-// LPU permits a direct lookup of the configured user's profile. Do not enumerate or batch-read
-// lockcollections here; comparisons use only the two profiles explicitly selected by the user.
-const profileUrl =
-  `https://firestore.googleapis.com/v1/projects/lpu-belt-explorer/databases/(default)/documents/` +
-  `lockcollections/${PROFILE_ID}?key=${apiKey}`;
+const profileUrl = `${LPU_USER_API}/${encodeURIComponent(PROFILE_ID)}`;
 const [profile, allEntries] = await Promise.all([getJson(profileUrl), getJson(LPU_DATA)]);
 
-const ownedIds = firestoreStrings(profile.fields?.own);
-const wishlistIds = firestoreStrings(profile.fields?.wishlist);
-const pickedIds = firestoreStrings(profile.fields?.picked);
+if (profile.data?.userId !== PROFILE_ID) {
+  throw new Error("LPU profile response did not match the configured user.");
+}
+const collections = profile.data.collections;
+if (!Array.isArray(collections?.picked)) {
+  throw new Error("LPU profile response is missing collections.picked.");
+}
+const ownedIds = collectionStrings(collections.own);
+const wishlistIds = collectionStrings(collections.wishlist);
+const ownedSet = new Set(ownedIds);
+const pickedIds = collectionStrings(collections.picked).filter((id) => ownedSet.has(id));
 const selectedIds = new Set([...ownedIds, ...wishlistIds]);
 const selectedEntries = allEntries.filter((entry) => selectedIds.has(entry.id));
 

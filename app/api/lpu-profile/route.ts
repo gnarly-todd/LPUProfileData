@@ -1,7 +1,7 @@
 import type { Belt, LockRecord } from "../../data";
 
 const GITHUB_PAGES_ORIGIN = "https://gnarly-todd.github.io";
-const LPU_HOME = "https://lpubelts.com/";
+const LPU_USER_API = "https://explore.lpubelts.com/services/api/v1/users";
 const LPU_DATA =
   "https://raw.githubusercontent.com/Lockpickers-United/lpu-belt-explorer/main/src/data/data.json";
 const PROFILE_ID_PATTERN = /^[A-Za-z0-9_-]{20,128}$/;
@@ -27,13 +27,18 @@ type LpuEntry = {
   makeModels: { make?: string; model?: string }[];
 };
 
-type FirestoreField = {
-  arrayValue?: { values?: { stringValue?: string }[] };
-  booleanValue?: boolean;
-  stringValue?: string;
+type LpuUserResponse = {
+  data?: {
+    userId?: string;
+    displayName?: string;
+    collections?: {
+      own?: unknown;
+      wishlist?: unknown;
+      picked?: unknown;
+    };
+  };
 };
 
-let apiKeyPromise: Promise<string> | undefined;
 let catalogPromise: Promise<LpuEntry[]> | undefined;
 
 const corsHeaders = (origin: string | null) =>
@@ -59,27 +64,6 @@ const javascript = (body: Record<string, unknown>, callback: string) => {
   });
 };
 
-async function getText(url: string) {
-  const response = await fetch(url, {
-    headers: { "User-Agent": "todd-lock-analytics-profile-loader" },
-  });
-  if (!response.ok) throw new Error(`LPU request failed (${response.status}).`);
-  return response.text();
-}
-
-async function getApiKey() {
-  apiKeyPromise ??= (async () => {
-    const home = await getText(LPU_HOME);
-    const assetPath = home.match(/assets\/index-[A-Za-z0-9_-]+\.js/)?.[0];
-    if (!assetPath) throw new Error("Could not locate the current LPU application asset.");
-    const application = await getText(new URL(assetPath, LPU_HOME).toString());
-    const apiKey = application.match(/AIza[0-9A-Za-z_-]{30,}/)?.[0];
-    if (!apiKey) throw new Error("Could not locate the public LPU profile service.");
-    return apiKey;
-  })();
-  return apiKeyPromise;
-}
-
 async function getCatalog() {
   catalogPromise ??= fetch(LPU_DATA, {
     headers: { "User-Agent": "todd-lock-analytics-profile-loader" },
@@ -90,9 +74,10 @@ async function getCatalog() {
   return catalogPromise;
 }
 
-function firestoreStrings(field?: FirestoreField): string[] {
-  return (field?.arrayValue?.values?.map((value) => value.stringValue).filter(Boolean) ??
-    []) as string[];
+function collectionStrings(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
 }
 
 function lockName(entry: LpuEntry) {
@@ -188,13 +173,12 @@ export async function GET(request: Request) {
   }
 
   try {
-    const [apiKey, catalog] = await Promise.all([getApiKey(), getCatalog()]);
-    // This endpoint reads only the exact public profile submitted by the user. Do not enumerate or
-    // batch-read lockcollections; comparisons use only profiles the user explicitly selects.
-    const profileResponse = await fetch(
-      `https://firestore.googleapis.com/v1/projects/lpu-belt-explorer/databases/(default)/documents/lockcollections/${parsed.id}?key=${apiKey}`,
-      { headers: { "User-Agent": "todd-lock-analytics-profile-loader" } },
-    );
+    const [profileResponse, catalog] = await Promise.all([
+      fetch(`${LPU_USER_API}/${encodeURIComponent(parsed.id)}`, {
+        headers: { Accept: "application/json", "User-Agent": "todd-lock-analytics-profile-loader" },
+      }),
+      getCatalog(),
+    ]);
 
     if (profileResponse.status === 404) {
       return reply({ message: "That LPU profile does not exist or is not public." }, 404);
@@ -202,13 +186,20 @@ export async function GET(request: Request) {
     if (!profileResponse.ok)
       throw new Error(`LPU profile request failed (${profileResponse.status}).`);
 
-    const profile = (await profileResponse.json()) as {
-      fields?: Record<string, FirestoreField>;
-    };
-    const ownedIds = firestoreStrings(profile.fields?.own);
-    const wishlistIds = firestoreStrings(profile.fields?.wishlist);
-    const pickedIds = new Set(firestoreStrings(profile.fields?.picked));
+    const profile = (await profileResponse.json()) as LpuUserResponse;
+    if (profile.data?.userId !== parsed.id) {
+      throw new Error("LPU profile response did not match the requested user.");
+    }
+    const collections = profile.data.collections;
+    if (!Array.isArray(collections?.picked)) {
+      throw new Error("LPU profile response is missing collections.picked.");
+    }
+    const ownedIds = collectionStrings(collections.own);
+    const wishlistIds = collectionStrings(collections.wishlist);
     const ownedSet = new Set(ownedIds);
+    const pickedIds = new Set(
+      collectionStrings(collections.picked).filter((id) => ownedSet.has(id)),
+    );
     const selectedIds = new Set([...ownedIds, ...wishlistIds]);
     const selectedEntries = catalog.filter((entry) => selectedIds.has(entry.id));
 
@@ -232,11 +223,8 @@ export async function GET(request: Request) {
         resourceLinks: resourceLinks(entry),
       };
     });
-    const anonymous = profile.fields?.privacyAnonymous?.booleanValue === true;
-    const storedName = profile.fields?.displayName?.stringValue?.trim();
-    const displayName = anonymous
-      ? "Anonymous LPU profile"
-      : storedName || parsed.suppliedName || "LPU profile";
+    const storedName = profile.data.displayName?.trim();
+    const displayName = storedName || parsed.suppliedName || "LPU profile";
     const canonicalUrl = `https://lpubelts.com/#/profile/${parsed.id}?name=${encodeURIComponent(displayName)}`;
 
     return reply(
@@ -253,7 +241,6 @@ export async function GET(request: Request) {
     );
   } catch (error) {
     console.error("LPU profile loading failed", error);
-    apiKeyPromise = undefined;
     return reply({ message: "LPU profile data is temporarily unavailable." }, 502);
   }
 }
