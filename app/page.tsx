@@ -26,6 +26,7 @@ const DEFAULT_PROFILE_ID = "84dULJFIN4bHIC1LxCiuvBCSqT43";
 const SAVED_PROFILES_KEY = "todd-lock-analytics-profiles-v1";
 const ACTIVE_PROFILE_KEY = "todd-lock-analytics-active-profile-v1";
 const DEFAULT_PROFILE_OVERRIDE_KEY = "todd-lock-analytics-default-profile-v1";
+const COMPARISON_PROFILE_IDS_KEY = "todd-lock-analytics-comparison-profiles-v1";
 const rankedBelts = beltOrder.filter((belt) => belt !== "Unranked");
 const displayBelts: Belt[] = ["Unranked", ...rankedBelts];
 const beltScore = Object.fromEntries(
@@ -229,6 +230,32 @@ async function fetchLpuProfile(profileUrl: string): Promise<LoadedProfile> {
   return result.profile;
 }
 
+function readCachedProfile(profileId: string) {
+  try {
+    const cached = JSON.parse(
+      window.sessionStorage.getItem(`lpu-profile-${profileId}`) || "null",
+    ) as LoadedProfile | null;
+    return cached?.id === profileId && Array.isArray(cached.locks) ? cached : null;
+  } catch {
+    return null;
+  }
+}
+
+async function loadSavedProfile(saved: SavedProfile) {
+  if (saved.id === DEFAULT_PROFILE_ID) return defaultProfile;
+  const cached = readCachedProfile(saved.id);
+  if (cached) return cached;
+  const loaded = await fetchLpuProfile(saved.url);
+  window.sessionStorage.setItem(`lpu-profile-${loaded.id}`, JSON.stringify(loaded));
+  return loaded;
+}
+
+const lpuLockUrl = (lock: LockRecord) => `https://lpubelts.com/locks/${lock.id}.html`;
+const lockWikiUrl = (lock: LockRecord) =>
+  `https://www.lockwiki.com/index.php?title=Special%3ASearch&profile=default&fulltext=1&search=${encodeURIComponent(lock.name)}`;
+const cataLocksUrl = (lock: LockRecord) =>
+  `https://www.catalocks.eu/search/?type=${encodeURIComponent(lock.name)}`;
+
 const iconPaths: Record<string, React.ReactNode> = {
   chart: (
     <>
@@ -274,6 +301,13 @@ const iconPaths: Record<string, React.ReactNode> = {
       <path d="m18 14 3 3-3 3" />
       <path d="M3 17h3c1.7 0 2.8-1.1 3.8-2.6M14.2 9.6C15.2 8.1 16.3 7 18 7h3" />
       <path d="m18 4 3 3-3 3" />
+    </>
+  ),
+  compare: (
+    <>
+      <rect x="3" y="4" width="7" height="16" rx="1" />
+      <rect x="14" y="4" width="7" height="16" rx="1" />
+      <path d="M10 9h4M10 15h4" />
     </>
   ),
   lock: (
@@ -903,6 +937,268 @@ function InsightCard({
   );
 }
 
+function comparisonStatus(lock?: LockRecord) {
+  if (!lock) return { label: "Not tracked", className: "none" };
+  if (lock.status === "Wishlist") return { label: "Wishlist", className: "wishlist" };
+  if (lock.picked) return { label: "Owned · Picked", className: "picked" };
+  return { label: "Owned", className: "owned" };
+}
+
+function ComparisonPage({
+  profiles,
+  loading,
+  error,
+  theme,
+  onExit,
+  onToggleTheme,
+}: {
+  profiles: LoadedProfile[] | null;
+  loading: boolean;
+  error: string;
+  theme: "dark" | "light";
+  onExit: () => void;
+  onToggleTheme: () => void;
+}) {
+  if (loading || !profiles || profiles.length !== 2) {
+    return (
+      <main className={`site-shell theme-${theme}`}>
+        <nav className="site-nav comparison-nav" aria-label="Comparison navigation">
+          <button className="brand brand-button" type="button" onClick={onExit}>
+            <span>
+              <Icon name="compare" size={17} />
+            </span>
+            <strong>Profile comparison</strong>
+            <small>Collection overview</small>
+          </button>
+          <div className="nav-actions">
+            <button className="source-link" type="button" onClick={onExit}>
+              Back to collection
+            </button>
+            <button className="icon-button" onClick={onToggleTheme} aria-label="Switch theme">
+              <Icon name={theme === "dark" ? "sun" : "moon"} />
+            </button>
+          </div>
+        </nav>
+        <section
+          className={`comparison-loading ${error ? "comparison-loading-error" : ""}`}
+          aria-live="polite"
+        >
+          <Icon name={error ? "search" : "refresh"} size={28} />
+          <h1>{error ? "Comparison unavailable" : "Loading both profiles…"}</h1>
+          <p>{error || "Getting the latest saved profile data for this comparison."}</p>
+          {error && (
+            <button type="button" onClick={onExit}>
+              Return to collection
+            </button>
+          )}
+        </section>
+      </main>
+    );
+  }
+
+  const [leftProfile, rightProfile] = profiles;
+  const left = deriveProfile(leftProfile);
+  const right = deriveProfile(rightProfile);
+  const leftById = new Map(left.locks.map((lock) => [lock.id, lock]));
+  const rightById = new Map(right.locks.map((lock) => [lock.id, lock]));
+  const comparisonLocks = [...new Set([...leftById.keys(), ...rightById.keys()])]
+    .map((id) => ({ id, left: leftById.get(id), right: rightById.get(id) }))
+    .sort((a, b) => {
+      const aLock = a.left || a.right;
+      const bLock = b.left || b.right;
+      if (!aLock || !bLock) return 0;
+      return (
+        beltScore[bLock.belt] - beltScore[aLock.belt] ||
+        beltLevelScore(bLock.beltLevel) - beltLevelScore(aLock.beltLevel) ||
+        aLock.name.localeCompare(bLock.name)
+      );
+    });
+  const leftOwned = new Set(left.ownedLocks.map((lock) => lock.id));
+  const rightOwned = new Set(right.ownedLocks.map((lock) => lock.id));
+  const sharedOwned = [...leftOwned].filter((id) => rightOwned.has(id)).length;
+  const leftOnly = [...leftOwned].filter((id) => !rightOwned.has(id)).length;
+  const rightOnly = [...rightOwned].filter((id) => !leftOwned.has(id)).length;
+  const wishlistOverlap = left.wishlistLocks.filter((lock) =>
+    right.wishlistLocks.some((candidate) => candidate.id === lock.id),
+  ).length;
+  const summaryRows = [
+    { label: "Owned", left: left.ownedLocks.length, right: right.ownedLocks.length },
+    { label: "Picked", left: left.ownedPicked, right: right.ownedPicked },
+    { label: "Wishlist", left: left.wishlistLocks.length, right: right.wishlistLocks.length },
+    { label: "Blue Belt+ owned", left: left.ownedBluePlus, right: right.ownedBluePlus },
+    { label: "Red/Black owned", left: left.ownedRedAndBlack, right: right.ownedRedAndBlack },
+    {
+      label: "Multi-mechanism owned",
+      left: left.ownedMultiMechanism,
+      right: right.ownedMultiMechanism,
+    },
+  ];
+
+  return (
+    <main className={`site-shell theme-${theme}`}>
+      <nav className="site-nav comparison-nav" aria-label="Comparison navigation">
+        <button className="brand brand-button" type="button" onClick={onExit}>
+          <span>
+            <Icon name="compare" size={17} />
+          </span>
+          <strong>Profile comparison</strong>
+          <small>Side by side</small>
+        </button>
+        <div className="nav-actions">
+          <button className="source-link" type="button" onClick={onExit}>
+            Back to collection
+          </button>
+          <button
+            className="icon-button"
+            onClick={onToggleTheme}
+            aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
+          >
+            <Icon name={theme === "dark" ? "sun" : "moon"} />
+          </button>
+        </div>
+      </nav>
+
+      <section className="comparison-page" id="top">
+        <header className="comparison-hero">
+          <p className="eyebrow">Loaded profile comparison</p>
+          <h1>
+            {left.profile.name} <span>vs</span> {right.profile.name}
+          </h1>
+          <p>Owned locks, picking progress, wishlists, belt coverage, and every tracked lock.</p>
+          <div className="comparison-source-links">
+            {[left.profile, right.profile].map((item) => (
+              <a key={item.id} href={item.url} target="_blank" rel="noreferrer">
+                {item.name} on LPU <Icon name="external" size={14} />
+              </a>
+            ))}
+          </div>
+        </header>
+
+        <section className="comparison-summary" aria-label="Profile totals">
+          <div className="comparison-table comparison-summary-table">
+            <div className="comparison-table-head">
+              <span>Collection metric</span>
+              <strong>{left.profile.name}</strong>
+              <strong>{right.profile.name}</strong>
+            </div>
+            {summaryRows.map((row) => (
+              <div className="comparison-table-row" key={row.label}>
+                <span>{row.label}</span>
+                <strong>{row.left.toLocaleString()}</strong>
+                <strong>{row.right.toLocaleString()}</strong>
+              </div>
+            ))}
+            <div className="comparison-table-row">
+              <span>Median owned rank</span>
+              <strong style={{ color: beltColors[left.ownedMedian] }}>{left.ownedMedian}</strong>
+              <strong style={{ color: beltColors[right.ownedMedian] }}>{right.ownedMedian}</strong>
+            </div>
+          </div>
+          <div className="comparison-overlap-grid">
+            <article>
+              <span>Shared owned</span>
+              <strong>{sharedOwned}</strong>
+              <small>Locks both profiles own</small>
+            </article>
+            <article>
+              <span>Only {left.profile.name}</span>
+              <strong>{leftOnly}</strong>
+              <small>Unique owned locks</small>
+            </article>
+            <article>
+              <span>Only {right.profile.name}</span>
+              <strong>{rightOnly}</strong>
+              <small>Unique owned locks</small>
+            </article>
+            <article>
+              <span>Shared wishlist</span>
+              <strong>{wishlistOverlap}</strong>
+              <small>Locks both profiles want</small>
+            </article>
+          </div>
+        </section>
+
+        <section className="comparison-section">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Owned collection distribution</p>
+              <h2>Belt rank coverage</h2>
+            </div>
+            <p>Unranked is shown before White Belt; Black 5 remains the highest rank.</p>
+          </div>
+          <div className="comparison-table belt-comparison-table">
+            <div className="comparison-table-head">
+              <span>Belt rank</span>
+              <strong>{left.profile.name}</strong>
+              <strong>{right.profile.name}</strong>
+            </div>
+            {displayBelts.map((rank) => (
+              <div className="comparison-table-row" key={rank}>
+                <span className="comparison-belt-label">
+                  <i style={{ background: beltColors[rank] }} /> {rank}
+                </span>
+                <strong>{left.beltCounts[rank]}</strong>
+                <strong>{right.beltCounts[rank]}</strong>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="comparison-section comparison-locks-section">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Complete union</p>
+              <h2>Tracked lock by profile</h2>
+            </div>
+            <p>{comparisonLocks.length.toLocaleString()} distinct locks across both profiles.</p>
+          </div>
+          <div className="comparison-lock-table-shell">
+            <table className="comparison-lock-table">
+              <thead>
+                <tr>
+                  <th>Lock</th>
+                  <th>Belt</th>
+                  <th>{left.profile.name}</th>
+                  <th>{right.profile.name}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {comparisonLocks.map((row) => {
+                  const lock = row.left || row.right;
+                  const leftStatus = comparisonStatus(row.left);
+                  const rightStatus = comparisonStatus(row.right);
+                  if (!lock) return null;
+                  return (
+                    <tr key={row.id}>
+                      <td>
+                        <strong>{lock.name}</strong>
+                        {lock.version && <small>{lock.version}</small>}
+                      </td>
+                      <td>
+                        <BeltPill belt={lock.belt} label={lock.beltLevel} compact />
+                      </td>
+                      <td>
+                        <span className={`comparison-status ${leftStatus.className}`}>
+                          {leftStatus.label}
+                        </span>
+                      </td>
+                      <td>
+                        <span className={`comparison-status ${rightStatus.className}`}>
+                          {rightStatus.label}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+    </main>
+  );
+}
+
 export default function Home() {
   const [activeProfile, setActiveProfile] = useState(defaultProfile);
   const [defaultFinderProfile, setDefaultFinderProfile] = useState(defaultProfile);
@@ -940,6 +1236,11 @@ export default function Home() {
   const [refreshMessage, setRefreshMessage] = useState("");
   const [displayedSnapshotDate, setDisplayedSnapshotDate] = useState(profileSnapshotDate);
   const [savedProfiles, setSavedProfiles] = useState<SavedProfile[]>([builtInDefaultProfile]);
+  const [comparisonSelections, setComparisonSelections] = useState<string[]>([]);
+  const [comparisonRequested, setComparisonRequested] = useState(false);
+  const [comparisonProfiles, setComparisonProfiles] = useState<LoadedProfile[] | null>(null);
+  const [comparisonLoading, setComparisonLoading] = useState(false);
+  const [comparisonError, setComparisonError] = useState("");
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [addProfileOpen, setAddProfileOpen] = useState(false);
   const [editingProfile, setEditingProfile] = useState<SavedProfile | null>(null);
@@ -976,6 +1277,42 @@ export default function Home() {
         .map((item) => ({ ...item, isDefault: false })),
     ];
     setSavedProfiles(profiles);
+
+    let comparisonIds: string[] = [];
+    try {
+      const storedComparison = JSON.parse(
+        window.localStorage.getItem(COMPARISON_PROFILE_IDS_KEY) || "[]",
+      ) as unknown;
+      if (Array.isArray(storedComparison)) {
+        comparisonIds = storedComparison.filter(
+          (id): id is string => typeof id === "string" && profiles.some((item) => item.id === id),
+        );
+      }
+    } catch {
+      comparisonIds = [];
+    }
+    comparisonIds = [...new Set(comparisonIds)].slice(0, 2);
+    setComparisonSelections(comparisonIds);
+    if (comparisonIds.length === 2) {
+      const comparisonItems = comparisonIds
+        .map((id) => profiles.find((item) => item.id === id))
+        .filter((item): item is SavedProfile => Boolean(item));
+      if (comparisonItems.length === 2) {
+        setComparisonRequested(true);
+        setComparisonLoading(true);
+        void Promise.all(comparisonItems.map(loadSavedProfile))
+          .then((loaded) => setComparisonProfiles(loaded))
+          .catch((error: unknown) => {
+            setComparisonError(
+              error instanceof Error ? error.message : "The selected profiles could not be loaded.",
+            );
+          })
+          .finally(() => setComparisonLoading(false));
+      }
+    } else if (comparisonIds.length) {
+      window.localStorage.removeItem(COMPARISON_PROFILE_IDS_KEY);
+      setComparisonSelections([]);
+    }
 
     if (defaultSaved.id === DEFAULT_PROFILE_ID) {
       setDefaultFinderProfile(defaultProfile);
@@ -1264,8 +1601,33 @@ export default function Home() {
   };
 
   const selectProfile = (selected: SavedProfile) => {
+    window.localStorage.removeItem(COMPARISON_PROFILE_IDS_KEY);
     window.localStorage.setItem(ACTIVE_PROFILE_KEY, selected.id);
     setProfileMenuOpen(false);
+    window.location.reload();
+  };
+
+  const toggleComparisonProfile = (selected: SavedProfile) => {
+    const alreadySelected = comparisonSelections.includes(selected.id);
+    const nextSelections = alreadySelected
+      ? comparisonSelections.filter((id) => id !== selected.id)
+      : comparisonSelections.length < 2
+        ? [...comparisonSelections, selected.id]
+        : comparisonSelections;
+
+    setComparisonSelections(nextSelections);
+    if (nextSelections.length === 2) {
+      window.localStorage.setItem(COMPARISON_PROFILE_IDS_KEY, JSON.stringify(nextSelections));
+      setProfileMenuOpen(false);
+      window.location.reload();
+    }
+  };
+
+  const exitComparison = () => {
+    window.localStorage.removeItem(COMPARISON_PROFILE_IDS_KEY);
+    setComparisonRequested(false);
+    setComparisonProfiles(null);
+    setComparisonSelections([]);
     window.location.reload();
   };
 
@@ -1285,6 +1647,10 @@ export default function Home() {
     setSavedProfiles(remaining);
     saveAddedProfiles(remaining);
     window.sessionStorage.removeItem(`lpu-profile-${removed.id}`);
+    if (comparisonSelections.includes(removed.id)) {
+      window.localStorage.removeItem(COMPARISON_PROFILE_IDS_KEY);
+      setComparisonSelections([]);
+    }
 
     if (profile.id === removed.id) {
       const defaultSlot = remaining.find((item) => item.isDefault) || builtInDefaultProfile;
@@ -1327,6 +1693,7 @@ export default function Home() {
       let nextActiveId: string;
 
       if (editingProfile) {
+        window.localStorage.removeItem(COMPARISON_PROFILE_IDS_KEY);
         const replacement: SavedProfile = {
           id: loaded.id,
           name: loaded.name,
@@ -1390,6 +1757,19 @@ export default function Home() {
         })),
     [defaultFinderProfile],
   );
+
+  if (comparisonRequested) {
+    return (
+      <ComparisonPage
+        profiles={comparisonProfiles}
+        loading={comparisonLoading}
+        error={comparisonError}
+        theme={theme}
+        onExit={exitComparison}
+        onToggleTheme={() => setTheme(theme === "dark" ? "light" : "dark")}
+      />
+    );
+  }
 
   return (
     <ProfileContext.Provider value={analytics}>
@@ -1493,6 +1873,38 @@ export default function Home() {
                       </div>
                     </div>
                   ))}
+                  <div className="profile-menu-label comparison-picker-label">
+                    <span>Compare profiles</span>
+                    <small>{comparisonSelections.length} of 2 selected</small>
+                  </div>
+                  <div className="profile-comparison-picker">
+                    {savedProfiles.map((item) => {
+                      const selected = comparisonSelections.includes(item.id);
+                      const disabled =
+                        savedProfiles.length < 2 || (!selected && comparisonSelections.length >= 2);
+                      return (
+                        <button
+                          type="button"
+                          key={item.id}
+                          onClick={() => toggleComparisonProfile(item)}
+                          disabled={disabled}
+                          role="menuitemcheckbox"
+                          aria-checked={selected}
+                        >
+                          <span className={`comparison-check ${selected ? "selected" : ""}`}>
+                            {selected && <Icon name="check" size={13} />}
+                          </span>
+                          <span>
+                            <strong>{item.name}</strong>
+                            <small>{selected ? "Selected for comparison" : "Select profile"}</small>
+                          </span>
+                        </button>
+                      );
+                    })}
+                    {savedProfiles.length < 2 && (
+                      <p>Add at least one more profile to start a comparison.</p>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -2004,6 +2416,17 @@ export default function Home() {
                         {item}
                       </button>
                     ))}
+                  </div>
+                  <div className="lock-resource-links" aria-label={`References for ${lock.name}`}>
+                    <a href={lpuLockUrl(lock)} target="_blank" rel="noreferrer">
+                      LPU Belts <Icon name="external" size={12} />
+                    </a>
+                    <a href={lockWikiUrl(lock)} target="_blank" rel="noreferrer">
+                      LockWiki <Icon name="external" size={12} />
+                    </a>
+                    <a href={cataLocksUrl(lock)} target="_blank" rel="noreferrer">
+                      CataLocks <Icon name="external" size={12} />
+                    </a>
                   </div>
                   <div className="lock-card-footer">
                     <span>Belt rank</span>

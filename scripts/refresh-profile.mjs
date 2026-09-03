@@ -24,6 +24,11 @@ function firestoreStrings(field) {
   return field?.arrayValue?.values?.map((value) => value.stringValue).filter(Boolean) ?? [];
 }
 
+function hasPublicDisplayName(value) {
+  const name = value?.trim();
+  return Boolean(name) && name.toLowerCase() !== "no display name";
+}
+
 function lockName(entry) {
   return entry.makeModels
     .map(({ make, model }) => [make, model].filter(Boolean).join(" ").trim())
@@ -121,7 +126,9 @@ source = source.replace(
 await writeFile(DATA_FILE, source);
 
 const leaderboard = await getJson(LPU_LEADERBOARD);
-const publicProfiles = (leaderboard.data ?? []).filter((entry) => entry.id && entry.displayName);
+const publicProfiles = (leaderboard.data ?? []).filter(
+  (entry) => entry.id && hasPublicDisplayName(entry.displayName),
+);
 const publicProfileNames = new Map(publicProfiles.map((entry) => [entry.id, entry.displayName]));
 const firestorePrefix = "projects/lpu-belt-explorer/databases/(default)/documents/lockcollections/";
 const profileChunks = [];
@@ -163,7 +170,7 @@ for (let index = 0; index < profileChunks.length; index += 8) {
     const id = document.name.split("/").at(-1);
     const name =
       document.fields?.displayName?.stringValue?.trim() || publicProfileNames.get(id)?.trim();
-    if (!id || !name) return;
+    if (!id || !hasPublicDisplayName(name)) return;
 
     ownersById.set(id, {
       id,
