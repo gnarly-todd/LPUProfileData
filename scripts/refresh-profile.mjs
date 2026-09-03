@@ -121,9 +121,7 @@ source = source.replace(
 await writeFile(DATA_FILE, source);
 
 const leaderboard = await getJson(LPU_LEADERBOARD);
-const publicProfiles = (leaderboard.data ?? []).filter(
-  (entry) => entry.id && entry.id !== PROFILE_ID && entry.displayName,
-);
+const publicProfiles = (leaderboard.data ?? []).filter((entry) => entry.id && entry.displayName);
 const publicProfileNames = new Map(publicProfiles.map((entry) => [entry.id, entry.displayName]));
 const firestorePrefix = "projects/lpu-belt-explorer/databases/(default)/documents/lockcollections/";
 const profileChunks = [];
@@ -131,7 +129,8 @@ for (let index = 0; index < publicProfiles.length; index += 100) {
   profileChunks.push(publicProfiles.slice(index, index + 100));
 }
 
-const ownersByLock = new Map(wishlistIds.map((id) => [id, []]));
+const ownersByLock = new Map(allEntries.map((entry) => [entry.id, []]));
+const ownersById = new Map();
 for (let index = 0; index < profileChunks.length; index += 8) {
   const batch = profileChunks.slice(index, index + 8);
   const batchResults = await Promise.all(
@@ -166,55 +165,50 @@ for (let index = 0; index < profileChunks.length; index += 8) {
       document.fields?.displayName?.stringValue?.trim() || publicProfileNames.get(id)?.trim();
     if (!id || !name) return;
 
+    ownersById.set(id, {
+      id,
+      name,
+    });
+
     firestoreStrings(document.fields?.own).forEach((lockId) => {
       const owners = ownersByLock.get(lockId);
       if (!owners) return;
-      owners.push({
-        id,
-        name,
-        url: `https://lpubelts.com/#/profile/${id}?name=${encodeURIComponent(name)}`,
-      });
+      owners.push(id);
     });
   });
 }
 
-const wishlistOwnerRows = catalog
-  .filter((entry) => ownersByLock.has(entry.id))
-  .map((entry) => ({
-    lockId: entry.id,
-    lockName: entry.name,
-    belt: entry.belt,
-    ...(entry.beltLevel ? { beltLevel: entry.beltLevel } : {}),
-    owners: ownersByLock
-      .get(entry.id)
-      .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" })),
-  }));
+const publicOwners = [...ownersById.values()].sort((a, b) =>
+  a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
+);
+const ownerIndexById = new Map(publicOwners.map((owner, index) => [owner.id, index]));
+const ownerIndexesByLock = Object.fromEntries(
+  [...ownersByLock.entries()]
+    .filter(([, owners]) => owners.length)
+    .map(([lockId, owners]) => [
+      lockId,
+      owners
+        .map((id) => ownerIndexById.get(id))
+        .filter((index) => index !== undefined)
+        .sort((a, b) => a - b),
+    ]),
+);
 
-const wishlistOwnersSource = `import type { Belt, LockRecord } from "./data";
-
-export type WishlistOwner = {
+const wishlistOwnersSource = `export type PublicLockOwner = {
   id: string;
   name: string;
-  url: string;
-};
-
-export type WishlistOwnerRow = {
-  lockId: string;
-  lockName: string;
-  belt: Belt;
-  beltLevel?: LockRecord["beltLevel"];
-  owners: WishlistOwner[];
 };
 
 export const wishlistOwnersUpdatedAt = ${JSON.stringify(refreshedOn)};
-export const publicProfileCount = ${publicProfiles.length + 1};
-export const wishlistOwnerRows: WishlistOwnerRow[] = ${JSON.stringify(wishlistOwnerRows, null, 2)};
+export const publicProfileCount = ${publicProfiles.length};
+export const publicOwners: PublicLockOwner[] = ${JSON.stringify(publicOwners, null, 2)};
+export const ownerIndexesByLock: Record<string, number[]> = ${JSON.stringify(ownerIndexesByLock, null, 2)};
 `;
 
 await writeFile(WISHLIST_OWNERS_FILE, wishlistOwnersSource);
 
 console.log(
   `Refreshed ${selectedEntries.length} locks: ${ownedIds.length} owned, ` +
-    `${wishlistIds.length} wishlist, ${pickedIds.length} picked; scanned ` +
-    `${publicProfiles.length + 1} public profiles for wishlist matches.`,
+    `${wishlistIds.length} wishlist, ${pickedIds.length} picked; indexed ` +
+    `${publicProfiles.length} public profiles for wishlist matching.`,
 );

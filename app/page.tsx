@@ -11,7 +11,12 @@ import {
   progression,
   statusBenchmarks as communityStatusBenchmarks,
 } from "./data";
-import { publicProfileCount, wishlistOwnerRows, wishlistOwnersUpdatedAt } from "./wishlist-owners";
+import {
+  ownerIndexesByLock,
+  publicOwners,
+  publicProfileCount,
+  wishlistOwnersUpdatedAt,
+} from "./wishlist-owners";
 
 const SOURCE_URL = "https://lpubelts.com/#/profile/84dULJFIN4bHIC1LxCiuvBCSqT43?name=todd";
 const HOSTED_SITE_ORIGIN = "https://todd-lock-analytics.nicelife70117.chatgpt.site";
@@ -900,6 +905,8 @@ function InsightCard({
 
 export default function Home() {
   const [activeProfile, setActiveProfile] = useState(defaultProfile);
+  const [defaultFinderProfile, setDefaultFinderProfile] = useState(defaultProfile);
+  const [defaultFinderReady, setDefaultFinderReady] = useState(false);
   const analytics = useMemo(() => deriveProfile(activeProfile), [activeProfile]);
   const {
     profile,
@@ -969,6 +976,34 @@ export default function Home() {
         .map((item) => ({ ...item, isDefault: false })),
     ];
     setSavedProfiles(profiles);
+
+    if (defaultSaved.id === DEFAULT_PROFILE_ID) {
+      setDefaultFinderProfile(defaultProfile);
+      setDefaultFinderReady(true);
+    } else {
+      let cachedDefault: LoadedProfile | null = null;
+      try {
+        cachedDefault = JSON.parse(
+          window.sessionStorage.getItem(`lpu-profile-${defaultSaved.id}`) || "null",
+        ) as LoadedProfile | null;
+      } catch {
+        cachedDefault = null;
+      }
+
+      if (cachedDefault?.id === defaultSaved.id && Array.isArray(cachedDefault.locks)) {
+        setDefaultFinderProfile(cachedDefault);
+        setDefaultFinderReady(true);
+      } else {
+        setDefaultFinderReady(false);
+        void fetchLpuProfile(defaultSaved.url)
+          .then((loaded) => {
+            setDefaultFinderProfile(loaded);
+            setDefaultFinderReady(true);
+            window.sessionStorage.setItem(`lpu-profile-${loaded.id}`, JSON.stringify(loaded));
+          })
+          .catch(() => setDefaultFinderReady(false));
+      }
+    }
 
     const storedActiveId = window.localStorage.getItem(ACTIVE_PROFILE_KEY);
     const selected = profiles.find((item) => item.id === storedActiveId) || defaultSaved;
@@ -1340,6 +1375,21 @@ export default function Home() {
   };
 
   const refreshInProgress = refreshState === "loading" || refreshState === "queued";
+  const defaultWishlistOwnerRows = useMemo(
+    () =>
+      defaultFinderProfile.locks
+        .filter((lock) => lock.status === "Wishlist")
+        .map((lock) => ({
+          lockId: lock.id,
+          lockName: lock.name,
+          belt: lock.belt,
+          beltLevel: lock.beltLevel,
+          owners: (ownerIndexesByLock[lock.id] ?? [])
+            .map((ownerIndex) => publicOwners[ownerIndex])
+            .filter(Boolean),
+        })),
+    [defaultFinderProfile],
+  );
 
   return (
     <ProfileContext.Provider value={analytics}>
@@ -1990,13 +2040,14 @@ export default function Home() {
         <section className="section wishlist-finder-section" id="wishlist-finder">
           <SectionHeading
             eyebrow="Public-profile exchange finder"
-            title="Who owns Todd’s wishlist locks?"
-            copy={`All ${wishlistOwnerRows.length || defaultProfile.locks.filter((lock) => lock.status === "Wishlist").length} locks on Todd’s wishlist are checked against ${publicProfileCount.toLocaleString()} publicly indexed LPU profiles. Open an owner list to find potential trade or borrowing contacts.`}
+            title={`Who owns ${defaultFinderProfile.name}’s wishlist locks?`}
+            copy={`All ${defaultWishlistOwnerRows.length} locks on the default profile’s wishlist are checked against ${publicProfileCount.toLocaleString()} publicly indexed LPU profiles. Changing a non-default profile does not change this finder.`}
           />
           <div className="wishlist-finder-meta">
             <span>
               <Icon name="refresh" size={15} /> Updated {wishlistOwnersUpdatedAt}
             </span>
+            <span>Default profile: {defaultFinderProfile.name}</span>
             <span>Anonymous profiles are excluded</span>
           </div>
           <div className="wishlist-table-shell">
@@ -2009,7 +2060,7 @@ export default function Home() {
                 </tr>
               </thead>
               <tbody>
-                {[...wishlistOwnerRows]
+                {(defaultFinderReady ? [...defaultWishlistOwnerRows] : [])
                   .sort(
                     (a, b) =>
                       beltScore[b.belt] - beltScore[a.belt] ||
@@ -2033,7 +2084,12 @@ export default function Home() {
                             </summary>
                             <div className="owner-links">
                               {row.owners.map((owner) => (
-                                <a key={owner.id} href={owner.url} target="_blank" rel="noreferrer">
+                                <a
+                                  key={owner.id}
+                                  href={`https://lpubelts.com/#/profile/${owner.id}?name=${encodeURIComponent(owner.name)}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                >
                                   {owner.name}
                                   <Icon name="external" size={13} />
                                 </a>
@@ -2046,10 +2102,17 @@ export default function Home() {
                       </td>
                     </tr>
                   ))}
-                {!wishlistOwnerRows.length && (
+                {!defaultFinderReady && (
                   <tr>
                     <td colSpan={3} className="wishlist-pending">
-                      Owner matches will populate after the next profile-data refresh.
+                      Loading the default profile’s wishlist…
+                    </td>
+                  </tr>
+                )}
+                {defaultFinderReady && !defaultWishlistOwnerRows.length && (
+                  <tr>
+                    <td colSpan={3} className="wishlist-pending">
+                      The default profile has no wishlist locks.
                     </td>
                   </tr>
                 )}
