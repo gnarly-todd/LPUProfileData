@@ -74,6 +74,11 @@ type LoadedProfile = {
   refreshedAt: string;
 };
 
+type LpuProfileApiResult = {
+  profile?: LoadedProfile;
+  message?: string;
+};
+
 type SavedProfile = Pick<LoadedProfile, "id" | "name" | "url"> & { isDefault: boolean };
 
 const defaultProfile: LoadedProfile = {
@@ -213,16 +218,53 @@ function isValidLpuProfileUrl(value: string) {
   }
 }
 
+function fetchLpuProfileFromGithubPages(profileUrl: string): Promise<LoadedProfile> {
+  return new Promise((resolve, reject) => {
+    const callbackName = `__lpuProfile_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const callbackHost = window as unknown as Record<string, unknown>;
+    const script = document.createElement("script");
+    const requestUrl = new URL("/api/lpu-profile", HOSTED_SITE_ORIGIN);
+    requestUrl.searchParams.set("url", profileUrl);
+    requestUrl.searchParams.set("callback", callbackName);
+
+    let settled = false;
+    const cleanup = () => {
+      window.clearTimeout(timeoutId);
+      script.remove();
+      delete callbackHost[callbackName];
+    };
+    const finish = (result: LpuProfileApiResult | null) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      if (!result?.profile) {
+        reject(new Error(result?.message || "That LPU profile could not be loaded."));
+        return;
+      }
+      resolve(result.profile);
+    };
+    const timeoutId = window.setTimeout(() => {
+      finish({ message: "The profile request timed out. Please try again." });
+    }, 20_000);
+
+    callbackHost[callbackName] = (result: LpuProfileApiResult) => finish(result);
+    script.async = true;
+    script.src = requestUrl.toString();
+    script.onerror = () =>
+      finish({ message: "The profile service could not be reached. Please try again." });
+    document.head.appendChild(script);
+  });
+}
+
 async function fetchLpuProfile(profileUrl: string): Promise<LoadedProfile> {
-  const apiOrigin = window.location.hostname.endsWith("github.io") ? HOSTED_SITE_ORIGIN : "";
-  const response = await fetch(
-    `${apiOrigin}/api/lpu-profile?url=${encodeURIComponent(profileUrl)}`,
-    { headers: { Accept: "application/json" } },
-  );
-  const result = (await response.json().catch(() => null)) as {
-    profile?: LoadedProfile;
-    message?: string;
-  } | null;
+  if (window.location.hostname.endsWith("github.io")) {
+    return fetchLpuProfileFromGithubPages(profileUrl);
+  }
+
+  const response = await fetch(`/api/lpu-profile?url=${encodeURIComponent(profileUrl)}`, {
+    headers: { Accept: "application/json" },
+  });
+  const result = (await response.json().catch(() => null)) as LpuProfileApiResult | null;
 
   if (!response.ok || !result?.profile) {
     throw new Error(result?.message || "That LPU profile could not be loaded.");

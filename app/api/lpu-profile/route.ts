@@ -5,6 +5,7 @@ const LPU_HOME = "https://lpubelts.com/";
 const LPU_DATA =
   "https://raw.githubusercontent.com/Lockpickers-United/lpu-belt-explorer/main/src/data/data.json";
 const PROFILE_ID_PATTERN = /^[A-Za-z0-9_-]{20,128}$/;
+const CALLBACK_PATTERN = /^__lpuProfile_[A-Za-z0-9_]{1,96}$/;
 const BELTS = new Set<Belt>([
   "White",
   "Yellow",
@@ -45,6 +46,18 @@ const json = (body: Record<string, unknown>, status: number, origin: string | nu
     status,
     headers: { "Cache-Control": "no-store", ...corsHeaders(origin) },
   });
+
+const javascript = (body: Record<string, unknown>, callback: string) => {
+  const serialized = JSON.stringify(body).replaceAll("<", "\\u003c");
+  return new Response(`${callback}(${serialized});`, {
+    status: 200,
+    headers: {
+      "Cache-Control": "no-store",
+      "Content-Type": "application/javascript; charset=utf-8",
+      "X-Content-Type-Options": "nosniff",
+    },
+  });
+};
 
 async function getText(url: string) {
   const response = await fetch(url, {
@@ -153,17 +166,24 @@ export function OPTIONS(request: Request) {
 
 export async function GET(request: Request) {
   const origin = request.headers.get("origin");
-  if (origin && origin !== GITHUB_PAGES_ORIGIN && origin !== new URL(request.url).origin) {
-    return json({ message: "Origin not allowed." }, 403, origin);
+  const requestUrl = new URL(request.url);
+  const requestedCallback = requestUrl.searchParams.get("callback");
+  if (requestedCallback && !CALLBACK_PATTERN.test(requestedCallback)) {
+    return json({ message: "Invalid callback." }, 400, origin);
+  }
+  const reply = (body: Record<string, unknown>, status: number) =>
+    requestedCallback ? javascript(body, requestedCallback) : json(body, status, origin);
+
+  if (origin && origin !== GITHUB_PAGES_ORIGIN && origin !== requestUrl.origin) {
+    return reply({ message: "Origin not allowed." }, 403);
   }
 
-  const profileUrl = new URL(request.url).searchParams.get("url");
+  const profileUrl = requestUrl.searchParams.get("url");
   const parsed = profileUrl ? parseProfileUrl(profileUrl) : null;
   if (!profileUrl || !parsed) {
-    return json(
+    return reply(
       { message: "Enter a full LPU profile link, such as https://lpubelts.com/#/profile/…" },
       400,
-      origin,
     );
   }
 
@@ -175,7 +195,7 @@ export async function GET(request: Request) {
     );
 
     if (profileResponse.status === 404) {
-      return json({ message: "That LPU profile does not exist or is not public." }, 404, origin);
+      return reply({ message: "That LPU profile does not exist or is not public." }, 404);
     }
     if (!profileResponse.ok)
       throw new Error(`LPU profile request failed (${profileResponse.status}).`);
@@ -191,10 +211,9 @@ export async function GET(request: Request) {
     const selectedEntries = catalog.filter((entry) => selectedIds.has(entry.id));
 
     if (selectedEntries.length !== selectedIds.size) {
-      return json(
+      return reply(
         { message: "The profile references locks missing from the current LPU catalog." },
         409,
-        origin,
       );
     }
 
@@ -218,7 +237,7 @@ export async function GET(request: Request) {
       : storedName || parsed.suppliedName || "LPU profile";
     const canonicalUrl = `https://lpubelts.com/#/profile/${parsed.id}?name=${encodeURIComponent(displayName)}`;
 
-    return json(
+    return reply(
       {
         profile: {
           id: parsed.id,
@@ -229,11 +248,10 @@ export async function GET(request: Request) {
         },
       },
       200,
-      origin,
     );
   } catch (error) {
     console.error("LPU profile loading failed", error);
     apiKeyPromise = undefined;
-    return json({ message: "LPU profile data is temporarily unavailable." }, 502, origin);
+    return reply({ message: "LPU profile data is temporarily unavailable." }, 502);
   }
 }
