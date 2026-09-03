@@ -14,7 +14,7 @@ export type WishlistOwnerRow = {
   owners: WishlistOwner[];
 };
 
-export const wishlistOwnersUpdatedAt = "September 2, 2026 · 10:53 PM EDT";
+export const wishlistOwnersUpdatedAt = "September 2, 2026 · 11:09 PM EDT";
 export const publicProfileCount = 5429;
 export const wishlistOwnerRows: WishlistOwnerRow[] = [
   {
