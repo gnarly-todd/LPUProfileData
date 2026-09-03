@@ -201,6 +201,17 @@ select:focus-visible {
   border-color: rgba(110, 231, 242, 0.42);
 }
 
+.profile-button.refreshing {
+  min-width: 112px;
+  color: #5ee5a1;
+  border-color: rgba(94, 229, 161, 0.48);
+  cursor: wait;
+}
+
+.profile-button.refreshing svg {
+  animation: refresh-spin 850ms linear infinite;
+}
+
 .profile-button svg:last-child {
   transition: transform 160ms ease;
 }
@@ -2666,6 +2677,10 @@ footer > a {
 @media (max-width: 820px) {
   .profile-button span {
     display: none;
+  }
+
+  .profile-button.refreshing span {
+    display: inline;
   }
 
   .profile-button svg:last-child {

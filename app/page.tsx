@@ -1249,6 +1249,8 @@ export default function Home() {
     }
   };
 
+  const refreshInProgress = refreshState === "loading" || refreshState === "queued";
+
   return (
     <ProfileContext.Provider value={analytics}>
       <main className={`site-shell theme-${theme}`}>
@@ -1273,15 +1275,19 @@ export default function Home() {
             </a>
             <div className="profile-menu-wrap" ref={profileMenuRef}>
               <button
-                className={`profile-button ${profileMenuOpen ? "active" : ""}`}
+                className={`profile-button ${profileMenuOpen ? "active" : ""} ${refreshInProgress ? "refreshing" : ""}`}
                 type="button"
-                onClick={() => setProfileMenuOpen((open) => !open)}
+                onClick={() => !refreshInProgress && setProfileMenuOpen((open) => !open)}
+                disabled={refreshInProgress}
                 aria-expanded={profileMenuOpen}
                 aria-haspopup="menu"
+                aria-label={
+                  refreshInProgress ? "Profile refresh in progress" : `${profile.name} profile menu`
+                }
               >
-                <Icon name="user" size={15} />
-                <span>{profile.name}</span>
-                <Icon name="chevron" size={14} />
+                <Icon name={refreshInProgress ? "refresh" : "user"} size={15} />
+                <span>{refreshInProgress ? "Refreshing…" : profile.name}</span>
+                {!refreshInProgress && <Icon name="chevron" size={14} />}
               </button>
               {profileMenuOpen && (
                 <div className="profile-menu" role="menu">
