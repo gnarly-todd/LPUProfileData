@@ -2083,14 +2083,6 @@ export default function Home() {
             </div>
             <div className="hero-meta">
               <div>
-                <span>Current belt</span>
-                {profile.id === DEFAULT_PROFILE_ID ? (
-                  <BeltPill belt="Blue" />
-                ) : (
-                  <strong>Not published</strong>
-                )}
-              </div>
-              <div>
                 <span>Owned median</span>
                 <BeltPill belt={ownedMedian} />
               </div>
